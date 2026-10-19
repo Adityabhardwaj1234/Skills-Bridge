@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-10-19T15:11:03.244487+00:00",
+  "environment": {
+    "os_name": "posix",
+    "sys_platform": "linux",
+    "platform_release": "4.19.0-gvisor",
+    "architecture": "x86_64",
+    "python_version": "3.11.2",
+    "python_executable": "/usr/bin/python3",
+    "skillbridge_home": "/tmp/skillbridge_perf_eky85w_6/.skillbridge",
+    "project_root": "/tmp/skillbridge_perf_eky85w_6/workspace",
+    "offline_mode": true,
+    "executables": {
+      "python": null,
+      "python3": "/usr/bin/python3",
+      "pip": "/usr/bin/pip",
+      "node": "/usr/bin/node",
+      "npm": "/usr/bin/npm",
+      "npx": "/usr/bin/npx",
+      "bun": null,
+      "uv": null,
+      "uvx": null,
+      "git": "/usr/bin/git",
+      "gh": null,
+      "opencode": null,
+      "claude": null,
+      "hermes": null
+    },
+    "clients": {
+      "opencode": {
+        "executable_found": false,
+        "executable_path": null,
+        "user_config_path": "/working_dir/.config/opencode/opencode.json",
+        "project_config_path": "/tmp/skillbridge_perf_eky85w_6/workspace/opencode.json",
+        "user_skills_dir": "/working_dir/.config/opencode/skills",
+        "project_skills_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.opencode/skills",
+        "user_agents_dir": "/working_dir/.config/opencode/agents",
+        "project_agents_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.opencode/agents"
+      },
+      "claude-code": {
+        "executable_found": false,
+        "executable_path": null,
+        "user_mcp_config_path": "/working_dir/.claude.json",
+        "user_settings_path": "/working_dir/.claude/settings.json",
+        "project_mcp_config_path": "/tmp/skillbridge_perf_eky85w_6/workspace/.mcp.json",
+        "project_settings_path": "/tmp/skillbridge_perf_eky85w_6/workspace/.claude/settings.json",
+        "user_skills_dir": "/working_dir/.claude/skills",
+        "project_skills_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.claude/skills",
+        "user_agents_dir": "/working_dir/.claude/agents",
+        "project_agents_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.claude/agents"
+      },
+      "hermes": {
+        "executable_found": false,
+        "bundled_catalog_present": true,
+        "bundled_skills_dir": "/working_dir/c_450284e786a4c499/skillbridge/src/skillbridge/data/hermes_catalog/bundled_skills",
+        "optional_skills_dir": "/working_dir/c_450284e786a4c499/skillbridge/src/skillbridge/data/hermes_catalog/optional_skills",
+        "optional_mcps_dir": "/working_dir/c_450284e786a4c499/skillbridge/src/skillbridge/data/hermes_catalog/optional_mcps"
+      }
+    }
+  },
+  "search_latency_ms": {
+    "median": 14.16,
+    "max": 18.62,
+    "samples": [
+      12.58,
+      18.62,
+      9.32,
+      14.16,
+      14.17
+    ]
+  },
+  "preview_latency_ms": {
+    "median": 34.73,
+    "max": 71.08,
+    "samples": [
+      30.88,
+      71.08,
+      34.73,
+      39.56,
+      26.09
+    ]
+  },
+  "bundle_import_latency_ms": {
+    "median": 120.47,
+    "p95": 1203.52,
+    "min": 84.56,
+    "max": 1394.76
+  },
+  "scaling_and_eviction_checkpoints": {
+    "after_1_imports": {
+      "active_skill_count": 1,
+      "loaded_payload_bytes": 724,
+      "process_tree_mib": 118.001,
+      "pinned_count": 1,
+      "eviction_events_so_far": 0
+    },
+    "after_5_imports": {
+      "active_skill_count": 5,
+      "loaded_payload_bytes": 3620,
+      "process_tree_mib": 150.003,
+      "pinned_count": 1,
+      "eviction_events_so_far": 0
+    },
+    "after_10_imports": {
+      "active_skill_count": 10,
+      "loaded_payload_bytes": 7243,
+      "process_tree_mib": 190.007,
+      "pinned_count": 1,
+      "eviction_events_so_far": 0
+    },
+    "after_25_imports": {
+      "active_skill_count": 11,
+      "loaded_payload_bytes": 7994,
+      "process_tree_mib": 198.008,
+      "pinned_count": 1,
+      "eviction_events_so_far": 2
+    },
+    "after_30_imports": {
+      "active_skill_count": 16,
+      "loaded_payload_bytes": 11629,
+      "process_tree_mib": 238.011,
+      "pinned_count": 1,
+      "eviction_events_so_far": 2
+    }
+  },
+  "eviction_events": [
+    {
+      "triggered": true,
+      "initial_mib": 254.012,
+      "final_mib": 198.008,
+      "target_watermark_mib": 210.0,
+      "evicted_skills": [
+        "local-custom/bench-skill-02",
+        "local-custom/bench-skill-03",
+        "local-custom/bench-skill-04",
+        "local-custom/bench-skill-05",
+        "local-custom/bench-skill-06",
+        "local-custom/bench-skill-07",
+        "local-custom/bench-skill-08"
+      ],
+      "evicted_count": 7,
+      "batches_run": 1,
+      "genuine_unrelieved_pressure": false
+    },
+    {
+      "triggered": true,
+      "initial_mib": 254.012,
+      "final_mib": 198.008,
+      "target_watermark_mib": 210.0,
+      "evicted_skills": [
+        "local-custom/bench-skill-09",
+        "local-custom/bench-skill-10",
+        "local-custom/bench-skill-11",
+        "local-custom/bench-skill-12",
+        "local-custom/bench-skill-13",
+        "local-custom/bench-skill-14",
+        "local-custom/bench-skill-15"
+      ],
+      "evicted_count": 7,
+      "batches_run": 1,
+      "genuine_unrelieved_pressure": false
+    }
+  ],
+  "after_full_unload": {
+    "process_rss_bytes": 115343360,
+    "child_rss_bytes": 0,
+    "total_process_tree_bytes": 115343360,
+    "total_process_tree_mib": 110.0,
+    "loaded_payload_bytes": 0,
+    "staged_bundle_disk_bytes": 160360,
+    "active_skill_count": 0,
+    "in_use_skill_count": 0,
+    "pinned_skill_count": 0,
+    "active_worker_processes": 0,
+    "active_mcp_processes": 0,
+    "threshold_mib": 250.0,
+    "target_watermark_mib": 210.0,
+    "over_threshold": false,
+    "genuine_unrelieved_pressure": false,
+    "measurement_source": "fake_deterministic"
+  },
+  "parallel_orchestration_benchmark": {
+    "tasks_dispatched": 16,
+    "completed_count": 16,
+    "total_wall_time_ms": 27.98
+  },
+  "script_execution_benchmark": {
+    "exit_code": 0,
+    "duration_ms": 145.02,
+    "network_disabled": true
+  }
+}

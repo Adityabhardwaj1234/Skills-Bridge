@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "skillbridge": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "skillbridge",
+        "mcp-serve"
+      ],
+      "env": {
+        "SKILLBRIDGE_OFFLINE": "0"
+      }
+    }
+  }
+}

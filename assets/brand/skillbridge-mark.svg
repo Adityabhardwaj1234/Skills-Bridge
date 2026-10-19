@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="SkillBridge Primary Brand Mark">
+  <title>SkillBridge Symbol</title>
+  <defs>
+    <linearGradient id="sb-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1120"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="sb-bridge" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer Hexagonal Integrity Shield -->
+  <rect x="6" y="6" width="108" height="108" rx="22" fill="url(#sb-bg)" stroke="#1E293B" stroke-width="2.5"/>
+  <path d="M60 18 L96 34 V62 C96 84 80 98 60 104 C40 98 24 84 24 62 V34 Z" fill="#0F172A" stroke="#334155" stroke-width="2"/>
+  <!-- Suspension Bridge Pathways & Linked Nodes -->
+  <path d="M32 72 C44 46, 76 46, 88 72" fill="none" stroke="url(#sb-bridge)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M28 72 H92" fill="none" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Vertical Verification Pillars (Tiers 0-3) -->
+  <line x1="46" y1="56" x2="46" y2="72" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="60" y1="51" x2="60" y2="72" stroke="#14B8A6" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="74" y1="56" x2="74" y2="72" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Connected Nodes -->
+  <circle cx="32" cy="72" r="5" fill="#38BDF8"/>
+  <circle cx="60" cy="51" r="5.5" fill="#14B8A6" stroke="#0B1120" stroke-width="2"/>
+  <circle cx="88" cy="72" r="5" fill="#14B8A6"/>
+</svg>

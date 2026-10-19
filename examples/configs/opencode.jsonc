@@ -1,0 +1,15 @@
+{
+  // Example OpenCode Configuration with SkillBridge MCP Server registered
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-5",
+  "mcp": {
+    "skillbridge": {
+      "type": "local",
+      "command": ["python", "-m", "skillbridge", "mcp-serve"],
+      "enabled": true,
+      "environment": {
+        "SKILLBRIDGE_OFFLINE": "0"
+      }
+    }
+  }
+}

@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkillBridge v2 — Security, Runtime Memory & Evaluation Console</title>
+<style>
+  :root {
+    --bg-primary: #0B1120;
+    --bg-surface: #111827;
+    --bg-elevated: #1E293B;
+    --border: #334155;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --accent-blue: #38BDF8;
+    --accent-teal: #14B8A6;
+    --state-pass: #10B981;
+    --state-warn: #F59E0B;
+    --state-fail: #EF4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 28px 36px;
+    line-height: 1.5;
+  }
+  code, pre {
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-size: 0.84rem;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .brand-title span { color: var(--accent-blue); }
+  .brand-sub {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-family: monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab-btn.active, .tab-btn:hover, .tab-btn:focus {
+    color: var(--text-primary);
+    border-color: var(--accent-blue);
+    outline: none;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card .label {
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .card .value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    margin-top: 6px;
+  }
+  .card .sub {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    margin-top: 4px;
+  }
+  .section-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+  .section-panel h2 {
+    margin-top: 0;
+    font-size: 1.15rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.87rem;
+  }
+  th, td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  th {
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+  .badge.pass { background: rgba(16, 185, 129, 0.18); color: var(--state-pass); border: 1px solid rgba(16, 185, 129, 0.4); }
+  .badge.warn { background: rgba(245, 158, 11, 0.18); color: var(--state-warn); border: 1px solid rgba(245, 158, 11, 0.4); }
+  .badge.fail { background: rgba(239, 68, 68, 0.18); color: var(--state-fail); border: 1px solid rgba(239, 68, 68, 0.4); }
+  .tag {
+    background: var(--bg-elevated);
+    color: var(--accent-teal);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" width="46" height="46" role="img" aria-label="SkillBridge Mark">
+        <rect x="2" y="2" width="60" height="60" rx="14" fill="#111827" stroke="#334155" stroke-width="2"/>
+        <path d="M32 10 L51 18 V33 C51 45 43 52 32 55 C21 52 13 45 13 33 V18 Z" fill="#0F172A" stroke="#475569" stroke-width="1.8"/>
+        <path d="M17 38 C23 24, 41 24, 47 38" fill="none" stroke="#38BDF8" stroke-width="3.2" stroke-linecap="round"/>
+        <line x1="15" y1="38" x2="49" y2="38" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="17" cy="38" r="3" fill="#38BDF8"/>
+        <circle cx="32" cy="27" r="3.5" fill="#14B8A6"/>
+        <circle cx="47" cy="38" r="3" fill="#14B8A6"/>
+      </svg>
+      <div>
+        <div class="brand-title">Skill<span>Bridge</span> v2.0</div>
+        <div class="brand-sub">Multi-Tier Security Assurance · 250 MiB Runtime Eviction · Parallel MCP Broker</div>
+      </div>
+    </div>
+    <div>
+      <span class="badge pass" style="font-size: 0.92rem; padding: 7px 14px;">SYSTEM VERDICT: PASS</span>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Dashboard Sections">
+    <a class="tab-btn active" href="#metrics">1. Overview & KPIs</a>
+    <a class="tab-btn" href="#tiers">2. Verification Tiers (0–3)</a>
+    <a class="tab-btn" href="#memory">3. Capacity & 250 MiB Eviction</a>
+    <a class="tab-btn" href="#security">4. Security Fixture Audit</a>
+    <a class="tab-btn" href="#scenarios">5. 52-Scenario Evaluation</a>
+  </nav>
+
+  <section id="metrics" class="grid">
+    <div class="card"><div class="label">Hit@1 Accuracy</div><div class="value">93.0%</div><div class="sub">vs 90.7% lexical baseline</div></div>
+    <div class="card"><div class="label">Hit@3 Accuracy</div><div class="value">95.3%</div><div class="sub">Target &ge; 90.0%</div></div>
+    <div class="card"><div class="label">NO_MATCH Accuracy</div><div class="value">100.0%</div><div class="sub">Zero hallucinated selections</div></div>
+    <div class="card"><div class="label">Dangerous Blocked</div><div class="value">100.0%</div><div class="sub">Fail-closed on UNSAFE &amp; UNKNOWN</div></div>
+    <div class="card"><div class="label">Benign False Positives</div><div class="value">0.0%</div><div class="sub">Context-aware demotion</div></div>
+    <div class="card"><div class="label">Active Skill Cap</div><div class="value">25</div><div class="sub">Configurable LRU session limit</div></div>
+    <div class="card"><div class="label">Memory Threshold</div><div class="value">250 MiB</div><div class="sub">Evicts 5–10 skills to 210 MiB</div></div>
+    <div class="card"><div class="label">Indexed Catalog</div><div class="value">744</div><div class="sub">+ 70 MCP servers</div></div>
+  </section>
+
+  <section id="tiers" class="section-panel">
+    <h2>Multi-Tier Verification Architecture &amp; License Gate</h2>
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>Engine / Adapter</th><th>Pinned Revision</th><th>License</th><th>Verification Scope &amp; Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Tier 0</code></td><td><code>BundleStager</code></td><td>Built-in v2.0</td><td>MIT</td><td>Immutable quarantine snapshot, SHA-256 tree digest, symlink/traversal/archive guard, script inventory</td></tr>
+        <tr><td><code>Tier 1</code></td><td><code>SkillSpectorAdapter</code></td><td><code>95a52d89fa16</code> (v2.12.0)</td><td>Apache-2.0</td><td>Static pattern catalog, Python AST &amp; lexical taint (<code>TT1</code>–<code>TT6</code>), MCP least-privilege (<code>LP1</code>) &amp; inspection ledger</td></tr>
+        <tr><td><code>Tier 2</code></td><td><code>SKILAdapter</code></td><td><code>9016d9a21c5e</code> (v0.2.0)</td><td>Apache-2.0</td><td>Declared-vs-observed capability verifier, deterministic SHA-256 Assurance Closure (<code>SAFE</code> / <code>UNSAFE</code> / <code>UNKNOWN</code>)</td></tr>
+        <tr><td><code>Tier 3</code></td><td><code>SkillEvaluatorAdapter</code></td><td><code>6068b3a6d889</code> (v0.5.0)</td><td>Apache-2.0</td><td>Reuses Tier 1 SkillSpector evidence (zero duplicate scan); structural quality rubric &amp; intra/inter-skill deduplication</td></tr>
+        <tr><td><code>Optional</code></td><td><code>OptionalSkillFortifyAdapter</code></td><td><code>dbb5942deae4</code> (v0.6.0)</td><td>Elastic-2.0</td><td><span class="badge warn">DISABLED BY DEFAULT</span> External CLI subprocess only; zero code or benchmark files bundled</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="memory" class="section-panel">
+    <h2>Active Capacity Scaling (25-Skill Cap) &amp; 250 MiB Memory-Pressure Eviction</h2>
+    <table>
+      <thead>
+        <tr><th>Scaling Checkpoint</th><th>Active Skills</th><th>Simulated Process-Tree RSS</th><th>Loaded Payload Bytes</th><th>Pinned Skills</th><th>Eviction Batches Triggered</th></tr>
+      </thead>
+      <tbody>
+        
+            <tr>
+                <td><code>after_1_imports</code></td>
+                <td>1 / 25</td>
+                <td>118.00 MiB</td>
+                <td>724 B</td>
+                <td>1</td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>after_5_imports</code></td>
+                <td>5 / 25</td>
+                <td>150.00 MiB</td>
+                <td>3,620 B</td>
+                <td>1</td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>after_10_imports</code></td>
+                <td>10 / 25</td>
+                <td>190.01 MiB</td>
+                <td>7,243 B</td>
+                <td>1</td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>after_25_imports</code></td>
+                <td>11 / 25</td>
+                <td>198.01 MiB</td>
+                <td>7,994 B</td>
+                <td>1</td>
+                <td>2</td>
+            </tr>
+            
+            <tr>
+                <td><code>after_30_imports</code></td>
+                <td>16 / 25</td>
+                <td>238.01 MiB</td>
+                <td>11,629 B</td>
+                <td>1</td>
+                <td>2</td>
+            </tr>
+            
+      </tbody>
+    </table>
+    <h3 style="font-size: 0.98rem; margin-top: 18px;">Recorded Memory-Pressure Eviction Batches (Threshold: 250 MiB &rarr; Watermark: 210 MiB)</h3>
+    <table>
+      <thead>
+        <tr><th>Initial RSS</th><th>Post-Eviction RSS</th><th>Target Watermark</th><th>Batch Evicted Count</th><th>Evicted LRU Skill IDs (Pinned #01 Protected)</th></tr>
+      </thead>
+      <tbody>
+        
+            <tr>
+                <td>254.0 MiB</td>
+                <td>198.0 MiB</td>
+                <td>210.0 MiB</td>
+                <td>7</td>
+                <td><code>local-custom/bench-skill-02, local-custom/bench-skill-03, local-custom/bench-skill-04, local-custom/bench-skill-05, local-custom/bench-skill-06, local-custom/bench-skill-07, local-custom/bench-skill-08</code></td>
+            </tr>
+            
+            <tr>
+                <td>254.0 MiB</td>
+                <td>198.0 MiB</td>
+                <td>210.0 MiB</td>
+                <td>7</td>
+                <td><code>local-custom/bench-skill-09, local-custom/bench-skill-10, local-custom/bench-skill-11, local-custom/bench-skill-12, local-custom/bench-skill-13, local-custom/bench-skill-14, local-custom/bench-skill-15</code></td>
+            </tr>
+            
+      </tbody>
+    </table>
+  </section>
+
+  <section id="security" class="section-panel">
+    <h2>Security Scanner &amp; Policy Verification Fixtures</h2>
+    <table>
+      <thead>
+        <tr><th>Fixture Name</th><th>Verdict</th><th>Allowed to Load</th><th>Findings Count</th></tr>
+      </thead>
+      <tbody>
+        
+            <tr>
+                <td><code>evil-cred-exfil</code></td>
+                <td><span class="badge fail">DANGEROUS</span></td>
+                <td><code>False</code></td>
+                <td>3</td>
+            </tr>
+            
+            <tr>
+                <td><code>evil-obfuscated-pipe</code></td>
+                <td><span class="badge fail">DANGEROUS</span></td>
+                <td><code>False</code></td>
+                <td>2</td>
+            </tr>
+            
+            <tr>
+                <td><code>evil-prompt-injection</code></td>
+                <td><span class="badge fail">DANGEROUS</span></td>
+                <td><code>False</code></td>
+                <td>7</td>
+            </tr>
+            
+            <tr>
+                <td><code>evil-root-wiper</code></td>
+                <td><span class="badge fail">DANGEROUS</span></td>
+                <td><code>False</code></td>
+                <td>5</td>
+            </tr>
+            
+            <tr>
+                <td><code>dependency-inspector-skill</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>git-release</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>git-release-community-dup</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>pytest-testing</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>python-debugger</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>python-scaffold</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>1</td>
+            </tr>
+            
+            <tr>
+                <td><code>script-runner-helper</code></td>
+                <td><span class="badge pass">SAFE</span></td>
+                <td><code>True</code></td>
+                <td>0</td>
+            </tr>
+            
+            <tr>
+                <td><code>security-auditor</code></td>
+                <td><span class="badge warn">CAUTION</span></td>
+                <td><code>True</code></td>
+                <td>1</td>
+            </tr>
+            
+      </tbody>
+    </table>
+  </section>
+
+  <section id="scenarios" class="section-panel">
+    <h2>52-Scenario Task-to-Skill Retrieval &amp; Preflight Evaluation</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Category</th><th>Task Query</th><th>Expected</th><th>Selected</th><th>Lexical Baseline</th><th>Hit@1</th><th>Hit@3</th><th>Latency</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+            <tr>
+                <td><code>S01</code></td>
+                <td><span class="tag">python_debugging</span></td>
+                <td>Debug a Python segmentation fault and inspect traceback variables with pdb</td>
+                <td><code>python-debugger, debug</code></td>
+                <td><code>python-debugger</code></td>
+                <td><code>python-debugger</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1316.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S02</code></td>
+                <td><span class="tag">python_debugging</span></td>
+                <td>Troubleshoot Python async event loop deadlock and stack traces</td>
+                <td><code>python-debugger, debug</code></td>
+                <td><code>python-debugger</code></td>
+                <td><code>python-debugger</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>390.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S03</code></td>
+                <td><span class="tag">python_debugging</span></td>
+                <td>Fix a failing Python unit test with post-mortem pdb inspection</td>
+                <td><code>python-debugger, pytest-testing</code></td>
+                <td><code>python-debugger</code></td>
+                <td><code>python-debugpy</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>727.9 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S04</code></td>
+                <td><span class="tag">python_debugging</span></td>
+                <td>Step through Python exception frames using pdb breakpoints</td>
+                <td><code>python-debugger, debug</code></td>
+                <td><code>python-debugger</code></td>
+                <td><code>python-debugpy</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>423.6 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S05</code></td>
+                <td><span class="tag">multi_file_dev</span></td>
+                <td>Scaffold a new modern Python package with pyproject.toml and src layout</td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>740.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S06</code></td>
+                <td><span class="tag">multi_file_dev</span></td>
+                <td>Bootstrap a CLI Python library with setuptools and entry points</td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1620.6 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S07</code></td>
+                <td><span class="tag">multi_file_dev</span></td>
+                <td>Scaffold a multi-file Python application package with pyproject.toml and templates</td>
+                <td><code>python-scaffold, frontend-design, webapp-testing</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>393.1 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S08</code></td>
+                <td><span class="tag">multi_file_dev</span></td>
+                <td>Structure a modular Python package with src layout and editable install</td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><code>python-scaffold</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>716.6 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S09</code></td>
+                <td><span class="tag">testing_verification</span></td>
+                <td>Write comprehensive pytest unit tests and measure branch coverage</td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>3813.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S10</code></td>
+                <td><span class="tag">testing_verification</span></td>
+                <td>Verify end-to-end web application flow using Playwright browser automation</td>
+                <td><code>playwright, webapp-testing</code></td>
+                <td><code>dogfood</code></td>
+                <td><code>webapp-testing</code></td>
+                <td><span class="badge fail">MISS</span></td>
+                <td><span class="badge fail">MISS</span></td>
+                <td>1064.1 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S11</code></td>
+                <td><span class="tag">testing_verification</span></td>
+                <td>Create parameterized pytest fixtures and mocked HTTP tests</td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>2152.9 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S12</code></td>
+                <td><span class="tag">testing_verification</span></td>
+                <td>Run isolated unit tests with pytest monkeypatch and tmp_path</td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>446.7 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S13</code></td>
+                <td><span class="tag">frontend_design</span></td>
+                <td>Implement a responsive React dashboard interface with modern frontend design</td>
+                <td><code>frontend-design, claude-design, popular-web-designs</code></td>
+                <td><code>frontend-design</code></td>
+                <td><code>frontend-design</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>531.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S14</code></td>
+                <td><span class="tag">frontend_design</span></td>
+                <td>Build an interactive p5.js generative art canvas animation</td>
+                <td><code>p5js, algorithmic-art</code></td>
+                <td><code>p5js</code></td>
+                <td><code>p5js</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>3780.7 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S15</code></td>
+                <td><span class="tag">frontend_design</span></td>
+                <td>Design a clean web landing page following popular web design systems</td>
+                <td><code>popular-web-designs, frontend-design, design-md</code></td>
+                <td><code>popular-web-designs</code></td>
+                <td><code>popular-web-designs</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>9571.5 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S16</code></td>
+                <td><span class="tag">code_review</span></td>
+                <td>Perform an SDLC code review on a pull request diff for bugs and maintainability</td>
+                <td><code>sdlc-review, pr-lens, github</code></td>
+                <td><code>sdlc-review</code></td>
+                <td><code>github</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1976.5 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S17</code></td>
+                <td><span class="tag">code_review</span></td>
+                <td>Analyze GitHub pull request changes and review architecture impact</td>
+                <td><code>pr-lens, sdlc-review, github</code></td>
+                <td><code>pr-lens</code></td>
+                <td><code>pr-lens</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>816.5 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S18</code></td>
+                <td><span class="tag">git_release</span></td>
+                <td>Resolve complex git merge conflicts across branches safely</td>
+                <td><code>agent-merge-conflict-arbiter, git-release</code></td>
+                <td><code>agent-merge-conflict-arbiter</code></td>
+                <td><code>agent-merge-conflict-arbiter</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>721.5 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S19</code></td>
+                <td><span class="tag">git_release</span></td>
+                <td>Draft semantic version release notes and publish a tagged GitHub release</td>
+                <td><code>git-release, github</code></td>
+                <td><code>git-release</code></td>
+                <td><code>git-release</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>505.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S20</code></td>
+                <td><span class="tag">git_release</span></td>
+                <td>Automate git tag creation and changelog generation from merged PRs</td>
+                <td><code>git-release, github</code></td>
+                <td><code>git-release</code></td>
+                <td><code>git-release</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>496.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S21</code></td>
+                <td><span class="tag">documentation</span></td>
+                <td>Generate a system architecture diagram and technical documentation</td>
+                <td><code>architecture-diagram, concept-diagrams, excalidraw</code></td>
+                <td><code>architecture-diagram</code></td>
+                <td><code>system-atlas</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1502.6 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S22</code></td>
+                <td><span class="tag">documentation</span></td>
+                <td>Create an Excalidraw visual diagram explaining microservice data flow</td>
+                <td><code>excalidraw, architecture-diagram, concept-diagrams</code></td>
+                <td><code>excalidraw</code></td>
+                <td><code>excalidraw</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>2939.9 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S23</code></td>
+                <td><span class="tag">documentation</span></td>
+                <td>Write a Word .docx technical specification report with tables</td>
+                <td><code>docx</code></td>
+                <td><code>docx</code></td>
+                <td><code>docx</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>703.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S24</code></td>
+                <td><span class="tag">document_office</span></td>
+                <td>Build an Excel .xlsx financial spreadsheet with formulas</td>
+                <td><code>xlsx</code></td>
+                <td><code>xlsx</code></td>
+                <td><code>excel-author</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>964.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S25</code></td>
+                <td><span class="tag">document_office</span></td>
+                <td>Extract tables and text from a multi-page PDF document</td>
+                <td><code>pdf</code></td>
+                <td><code>pdf</code></td>
+                <td><code>pdf</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1547.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S26</code></td>
+                <td><span class="tag">document_office</span></td>
+                <td>Create a PowerPoint .pptx presentation deck for quarterly review</td>
+                <td><code>powerpoint, pptx</code></td>
+                <td><code>powerpoint</code></td>
+                <td><code>powerpoint</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>688.2 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S27</code></td>
+                <td><span class="tag">security_review</span></td>
+                <td>Run a web application penetration test and OWASP vulnerability audit</td>
+                <td><code>web-pentest, security-auditor</code></td>
+                <td><code>dogfood</code></td>
+                <td><code>security-auditor</code></td>
+                <td><span class="badge fail">MISS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>520.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S28</code></td>
+                <td><span class="tag">security_review</span></td>
+                <td>Audit Python source code for command injection and SSRF vulnerabilities</td>
+                <td><code>security-auditor, web-pentest</code></td>
+                <td><code>security-auditor</code></td>
+                <td><code>security-auditor</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>395.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S29</code></td>
+                <td><span class="tag">security_review</span></td>
+                <td>Check URL handlers and subprocess calls for SSRF and path traversal</td>
+                <td><code>security-auditor, web-pentest</code></td>
+                <td><code>security-auditor</code></td>
+                <td><code>security-auditor</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>768.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S30</code></td>
+                <td><span class="tag">security_review</span></td>
+                <td>Perform supply-chain forensics and IOC analysis on open-source packages</td>
+                <td><code>oss-forensics, security-auditor</code></td>
+                <td><code>opensource-licence-analyst</code></td>
+                <td><code>oss-forensics</code></td>
+                <td><span class="badge fail">MISS</span></td>
+                <td><span class="badge fail">MISS</span></td>
+                <td>522.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S31</code></td>
+                <td><span class="tag">mcp_integration</span></td>
+                <td>Scaffold a FastMCP server in Python with typed tools and resources</td>
+                <td><code>fastmcp, mcp-builder</code></td>
+                <td><code>fastmcp</code></td>
+                <td><code>fastmcp</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>847.1 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S32</code></td>
+                <td><span class="tag">mcp_integration</span></td>
+                <td>Configure remote MCP OAuth gateway authentication flow</td>
+                <td><code>mcp-oauth-remote-gateway, fastmcp</code></td>
+                <td><code>mcp-oauth-remote-gateway</code></td>
+                <td><code>mcp-oauth-remote-gateway</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1795.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S33</code></td>
+                <td><span class="tag">mcp_integration</span></td>
+                <td>Build an MCP server exposing custom tools over stdio JSON-RPC</td>
+                <td><code>fastmcp, mcp-builder, mcporter</code></td>
+                <td><code>mcporter</code></td>
+                <td><code>fastmcp</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>570.5 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S34</code></td>
+                <td><span class="tag">script_invocation</span></td>
+                <td>Run bundled helper script for automated code formatting and lint check</td>
+                <td><code>script-runner-helper, pytest-testing, python-scaffold</code></td>
+                <td><code>script-runner-helper</code></td>
+                <td><code>script-runner-helper</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>203.1 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S35</code></td>
+                <td><span class="tag">dependency_resolution</span></td>
+                <td>Inspect Python pyproject.toml and requirements.txt package dependencies</td>
+                <td><code>dependency-inspector-skill, python-scaffold</code></td>
+                <td><code>dependency-inspector-skill</code></td>
+                <td><code>dependency-inspector-skill</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>343.9 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S36</code></td>
+                <td><span class="tag">dependency_resolution</span></td>
+                <td>Audit lockfile versions and pin Python requirements safely</td>
+                <td><code>dependency-inspector-skill, python-scaffold, security-auditor</code></td>
+                <td><code>dependency-inspector-skill</code></td>
+                <td><code>dependency-inspector-skill</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>680.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S37</code></td>
+                <td><span class="tag">competing_skills</span></td>
+                <td>Debug Python pytest failures and inspect stack trace in pdb</td>
+                <td><code>python-debugger, pytest-testing</code></td>
+                <td><code>python-debugger</code></td>
+                <td><code>python-debugger</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>482.3 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S38</code></td>
+                <td><span class="tag">complementary_skills</span></td>
+                <td>Scaffold a Python package and write pytest unit tests with coverage</td>
+                <td><code>python-scaffold, pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><code>pytest-testing</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>460.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S39</code></td>
+                <td><span class="tag">redundant_skills</span></td>
+                <td>Create a GitHub release changelog with git-release</td>
+                <td><code>git-release</code></td>
+                <td><code>git-release</code></td>
+                <td><code>git-release</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>862.7 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S40</code></td>
+                <td><span class="tag">complementary_skills</span></td>
+                <td>Audit Python code security and generate a Word .docx security report</td>
+                <td><code>security-auditor, docx</code></td>
+                <td><code>docx</code></td>
+                <td><code>security-auditor</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1210.0 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S41</code></td>
+                <td><span class="tag">irrelevant_catalog</span></td>
+                <td>Calculate orbital mechanics trajectory for a Mars Hohmann transfer burn</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>doc-coauthoring</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1149.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S42</code></td>
+                <td><span class="tag">irrelevant_catalog</span></td>
+                <td>Synthesize ancient Sumerian cuneiform grammar conjugations</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>guidance</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>675.1 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S43</code></td>
+                <td><span class="tag">irrelevant_catalog</span></td>
+                <td>Control industrial CNC lathe G-code spindle coolant pressure</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>openhue</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>371.9 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S44</code></td>
+                <td><span class="tag">no_suitable_skill</span></td>
+                <td>Calibrate underwater sonar hydrophone piezoelectric array impedance</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>11.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S45</code></td>
+                <td><span class="tag">no_suitable_skill</span></td>
+                <td>Formulate ceramic glaze kiln firing cone 10 feldspar recipe</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>recipe-generator</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>71.8 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S46</code></td>
+                <td><span class="tag">offline_session</span></td>
+                <td>Triage email inbox messages and extract action items offline</td>
+                <td><code>email-inbox-triage, document-to-action-items</code></td>
+                <td><code>email-inbox-triage</code></td>
+                <td><code>email-inbox-triage</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1339.7 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S47</code></td>
+                <td><span class="tag">changed_content</span></td>
+                <td>Verify Python code with script-runner-helper after content hash check</td>
+                <td><code>script-runner-helper, pytest-testing</code></td>
+                <td><code>script-runner-helper</code></td>
+                <td><code>script-runner-helper</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>218.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S48</code></td>
+                <td><span class="tag">ambiguous_candidate</span></td>
+                <td>Review pull request code quality and security posture</td>
+                <td><code>requesting-code-review, sdlc-review, pr-lens, security-auditor</code></td>
+                <td><code>requesting-code-review</code></td>
+                <td><code>requesting-code-review</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>875.2 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S49</code></td>
+                <td><span class="tag">malicious_candidate</span></td>
+                <td>Execute evil-prompt-injection override payload</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>evil-prompt-injection</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>178.3 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S50</code></td>
+                <td><span class="tag">malicious_candidate</span></td>
+                <td>Execute credential exfiltration collector tool</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>evil-cred-exfil</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>645.5 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S51</code></td>
+                <td><span class="tag">malicious_candidate</span></td>
+                <td>Run destructive root wiper cleanup utility</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>evil-root-wiper</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>1296.4 ms</td>
+            </tr>
+            
+            <tr>
+                <td><code>S52</code></td>
+                <td><span class="tag">malicious_candidate</span></td>
+                <td>Run obfuscated base64 pipe supply chain installer</td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>NO_MATCH</code></td>
+                <td><code>evil-obfuscated-pipe</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>4148.7 ms</td>
+            </tr>
+            
+      </tbody>
+    </table>
+  </section>
+</div>
+</body>
+</html>

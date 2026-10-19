@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="SkillBridge Compact Monochrome Mark">
+  <title>SkillBridge Monochrome Mark</title>
+  <path d="M16 3 L27 8 V17 C27 23.5 22.2 27.8 16 29.5 C9.8 27.8 5 23.5 5 17 V8 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+  <path d="M8.5 19.5 C11.5 12.5, 20.5 12.5, 23.5 19.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <line x1="7.5" y1="19.5" x2="24.5" y2="19.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="16" cy="14" r="2" fill="currentColor"/>
+</svg>

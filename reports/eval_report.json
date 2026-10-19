@@ -1,0 +1,1855 @@
+{
+  "generated_at": "2026-10-19T15:11:03.478421+00:00",
+  "product": "SkillBridge",
+  "version": "2.0.0",
+  "total_scenarios": 52,
+  "matching_scenarios": 43,
+  "no_match_scenarios": 9,
+  "catalog_indexed": {
+    "skills": 744,
+    "mcp_servers": 70,
+    "total": 814
+  },
+  "acceptance_thresholds": {
+    "hit_at_1_min": 0.75,
+    "hit_at_3_min": 0.9,
+    "dangerous_rejection_rate_min": 1.0,
+    "benign_false_positive_block_max": 0.0,
+    "no_match_accuracy_min": 0.85
+  },
+  "metrics": {
+    "total_scenarios": 52,
+    "hit_at_1": 0.9302,
+    "hit_at_3": 0.9535,
+    "lexical_baseline_hit_at_1": 0.907,
+    "hit_at_1_improvement_over_baseline": 0.0232,
+    "no_match_accuracy": 1.0,
+    "dangerous_fixture_rejection_rate": 1.0,
+    "benign_false_positive_block_rate": 0.0,
+    "duplicate_skill_avoidance_rate": 1.0,
+    "scan_cache_hit_rate": 0.5524,
+    "avg_preflight_latency_ms": 1176.84,
+    "total_skill_bodies_loaded": 68,
+    "total_skill_bytes_loaded_and_freed": 840636,
+    "all_sessions_unloaded_cleanly": true
+  },
+  "performance_and_memory_summary": {
+    "generated_at": "2026-10-19T15:11:03.244487+00:00",
+    "environment": {
+      "os_name": "posix",
+      "sys_platform": "linux",
+      "platform_release": "4.19.0-gvisor",
+      "architecture": "x86_64",
+      "python_version": "3.11.2",
+      "python_executable": "/usr/bin/python3",
+      "skillbridge_home": "/tmp/skillbridge_perf_eky85w_6/.skillbridge",
+      "project_root": "/tmp/skillbridge_perf_eky85w_6/workspace",
+      "offline_mode": true,
+      "executables": {
+        "python": null,
+        "python3": "/usr/bin/python3",
+        "pip": "/usr/bin/pip",
+        "node": "/usr/bin/node",
+        "npm": "/usr/bin/npm",
+        "npx": "/usr/bin/npx",
+        "bun": null,
+        "uv": null,
+        "uvx": null,
+        "git": "/usr/bin/git",
+        "gh": null,
+        "opencode": null,
+        "claude": null,
+        "hermes": null
+      },
+      "clients": {
+        "opencode": {
+          "executable_found": false,
+          "executable_path": null,
+          "user_config_path": "/working_dir/.config/opencode/opencode.json",
+          "project_config_path": "/tmp/skillbridge_perf_eky85w_6/workspace/opencode.json",
+          "user_skills_dir": "/working_dir/.config/opencode/skills",
+          "project_skills_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.opencode/skills",
+          "user_agents_dir": "/working_dir/.config/opencode/agents",
+          "project_agents_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.opencode/agents"
+        },
+        "claude-code": {
+          "executable_found": false,
+          "executable_path": null,
+          "user_mcp_config_path": "/working_dir/.claude.json",
+          "user_settings_path": "/working_dir/.claude/settings.json",
+          "project_mcp_config_path": "/tmp/skillbridge_perf_eky85w_6/workspace/.mcp.json",
+          "project_settings_path": "/tmp/skillbridge_perf_eky85w_6/workspace/.claude/settings.json",
+          "user_skills_dir": "/working_dir/.claude/skills",
+          "project_skills_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.claude/skills",
+          "user_agents_dir": "/working_dir/.claude/agents",
+          "project_agents_dir": "/tmp/skillbridge_perf_eky85w_6/workspace/.claude/agents"
+        },
+        "hermes": {
+          "executable_found": false,
+          "bundled_catalog_present": true,
+          "bundled_skills_dir": "/working_dir/c_450284e786a4c499/skillbridge/src/skillbridge/data/hermes_catalog/bundled_skills",
+          "optional_skills_dir": "/working_dir/c_450284e786a4c499/skillbridge/src/skillbridge/data/hermes_catalog/optional_skills",
+          "optional_mcps_dir": "/working_dir/c_450284e786a4c499/skillbridge/src/skillbridge/data/hermes_catalog/optional_mcps"
+        }
+      }
+    },
+    "search_latency_ms": {
+      "median": 14.16,
+      "max": 18.62,
+      "samples": [
+        12.58,
+        18.62,
+        9.32,
+        14.16,
+        14.17
+      ]
+    },
+    "preview_latency_ms": {
+      "median": 34.73,
+      "max": 71.08,
+      "samples": [
+        30.88,
+        71.08,
+        34.73,
+        39.56,
+        26.09
+      ]
+    },
+    "bundle_import_latency_ms": {
+      "median": 120.47,
+      "p95": 1203.52,
+      "min": 84.56,
+      "max": 1394.76
+    },
+    "scaling_and_eviction_checkpoints": {
+      "after_1_imports": {
+        "active_skill_count": 1,
+        "loaded_payload_bytes": 724,
+        "process_tree_mib": 118.001,
+        "pinned_count": 1,
+        "eviction_events_so_far": 0
+      },
+      "after_5_imports": {
+        "active_skill_count": 5,
+        "loaded_payload_bytes": 3620,
+        "process_tree_mib": 150.003,
+        "pinned_count": 1,
+        "eviction_events_so_far": 0
+      },
+      "after_10_imports": {
+        "active_skill_count": 10,
+        "loaded_payload_bytes": 7243,
+        "process_tree_mib": 190.007,
+        "pinned_count": 1,
+        "eviction_events_so_far": 0
+      },
+      "after_25_imports": {
+        "active_skill_count": 11,
+        "loaded_payload_bytes": 7994,
+        "process_tree_mib": 198.008,
+        "pinned_count": 1,
+        "eviction_events_so_far": 2
+      },
+      "after_30_imports": {
+        "active_skill_count": 16,
+        "loaded_payload_bytes": 11629,
+        "process_tree_mib": 238.011,
+        "pinned_count": 1,
+        "eviction_events_so_far": 2
+      }
+    },
+    "eviction_events": [
+      {
+        "triggered": true,
+        "initial_mib": 254.012,
+        "final_mib": 198.008,
+        "target_watermark_mib": 210.0,
+        "evicted_skills": [
+          "local-custom/bench-skill-02",
+          "local-custom/bench-skill-03",
+          "local-custom/bench-skill-04",
+          "local-custom/bench-skill-05",
+          "local-custom/bench-skill-06",
+          "local-custom/bench-skill-07",
+          "local-custom/bench-skill-08"
+        ],
+        "evicted_count": 7,
+        "batches_run": 1,
+        "genuine_unrelieved_pressure": false
+      },
+      {
+        "triggered": true,
+        "initial_mib": 254.012,
+        "final_mib": 198.008,
+        "target_watermark_mib": 210.0,
+        "evicted_skills": [
+          "local-custom/bench-skill-09",
+          "local-custom/bench-skill-10",
+          "local-custom/bench-skill-11",
+          "local-custom/bench-skill-12",
+          "local-custom/bench-skill-13",
+          "local-custom/bench-skill-14",
+          "local-custom/bench-skill-15"
+        ],
+        "evicted_count": 7,
+        "batches_run": 1,
+        "genuine_unrelieved_pressure": false
+      }
+    ],
+    "after_full_unload": {
+      "process_rss_bytes": 115343360,
+      "child_rss_bytes": 0,
+      "total_process_tree_bytes": 115343360,
+      "total_process_tree_mib": 110.0,
+      "loaded_payload_bytes": 0,
+      "staged_bundle_disk_bytes": 160360,
+      "active_skill_count": 0,
+      "in_use_skill_count": 0,
+      "pinned_skill_count": 0,
+      "active_worker_processes": 0,
+      "active_mcp_processes": 0,
+      "threshold_mib": 250.0,
+      "target_watermark_mib": 210.0,
+      "over_threshold": false,
+      "genuine_unrelieved_pressure": false,
+      "measurement_source": "fake_deterministic"
+    },
+    "parallel_orchestration_benchmark": {
+      "tasks_dispatched": 16,
+      "completed_count": 16,
+      "total_wall_time_ms": 27.98
+    },
+    "script_execution_benchmark": {
+      "exit_code": 0,
+      "duration_ms": 145.02,
+      "network_disabled": true
+    }
+  },
+  "installer_and_rollback_verification": {
+    "opencode_skill_install_and_rollback": true,
+    "claude_code_skill_install_and_rollback": true,
+    "opencode_mcp_install_and_rollback": true,
+    "claude_code_mcp_install_and_rollback": true
+  },
+  "security_fixture_summary": {
+    "benign_fixtures": [
+      {
+        "name": "dependency-inspector-skill",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 0
+      },
+      {
+        "name": "git-release",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 0
+      },
+      {
+        "name": "git-release-community-dup",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 0
+      },
+      {
+        "name": "pytest-testing",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 0
+      },
+      {
+        "name": "python-debugger",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 0
+      },
+      {
+        "name": "python-scaffold",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 1
+      },
+      {
+        "name": "script-runner-helper",
+        "verdict": "SAFE",
+        "allowed": true,
+        "findings": 0
+      },
+      {
+        "name": "security-auditor",
+        "verdict": "CAUTION",
+        "allowed": true,
+        "findings": 1
+      }
+    ],
+    "malicious_fixtures": [
+      {
+        "name": "evil-cred-exfil",
+        "verdict": "DANGEROUS",
+        "allowed": false,
+        "findings": 3
+      },
+      {
+        "name": "evil-obfuscated-pipe",
+        "verdict": "DANGEROUS",
+        "allowed": false,
+        "findings": 2
+      },
+      {
+        "name": "evil-prompt-injection",
+        "verdict": "DANGEROUS",
+        "allowed": false,
+        "findings": 7
+      },
+      {
+        "name": "evil-root-wiper",
+        "verdict": "DANGEROUS",
+        "allowed": false,
+        "findings": 5
+      }
+    ]
+  },
+  "thresholds_passed": true,
+  "verdict": "PASS",
+  "scenarios": [
+    {
+      "scenario_id": "S01",
+      "category": "python_debugging",
+      "query": "Debug a Python segmentation fault and inspect traceback variables with pdb",
+      "expected_skills": [
+        "python-debugger",
+        "debug"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-debugger",
+        "official/software-development/python-debugpy",
+        "official/software-development/node-inspect-debugger"
+      ],
+      "selected_primary": "python-debugger",
+      "top_3_candidates": [
+        "python-debugger",
+        "python-debugpy",
+        "node-inspect-debugger"
+      ],
+      "baseline_lexical_pick": "python-debugger",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 26758,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1316.76,
+      "selection_reason": "Selected 3 extension(s) [local-custom/python-debugger, official/software-development/python-debugpy, official/software-development/node-inspect-debugger]. Primary match 'local-custom/python-debugger' scored 78.8/100 (relevance=37.3, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S02",
+      "category": "python_debugging",
+      "query": "Troubleshoot Python async event loop deadlock and stack traces",
+      "expected_skills": [
+        "python-debugger",
+        "debug"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-debugger"
+      ],
+      "selected_primary": "python-debugger",
+      "top_3_candidates": [
+        "python-debugger",
+        "dream-loop",
+        "fastapi-development"
+      ],
+      "baseline_lexical_pick": "python-debugger",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 709,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 390.04,
+      "selection_reason": "Selected 1 extension(s) [local-custom/python-debugger]. Primary match 'local-custom/python-debugger' scored 58.6/100 (relevance=17.1, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S03",
+      "category": "python_debugging",
+      "query": "Fix a failing Python unit test with post-mortem pdb inspection",
+      "expected_skills": [
+        "python-debugger",
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-debugger",
+        "official/software-development/python-debugpy",
+        "local-custom/pytest-testing"
+      ],
+      "selected_primary": "python-debugger",
+      "top_3_candidates": [
+        "python-debugger",
+        "python-debugpy",
+        "pytest-testing"
+      ],
+      "baseline_lexical_pick": "python-debugpy",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 16256,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 727.9,
+      "selection_reason": "Selected 3 extension(s) [local-custom/python-debugger, official/software-development/python-debugpy, local-custom/pytest-testing]. Primary match 'local-custom/python-debugger' scored 68.8/100 (relevance=27.3, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S04",
+      "category": "python_debugging",
+      "query": "Step through Python exception frames using pdb breakpoints",
+      "expected_skills": [
+        "python-debugger",
+        "debug"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-debugger",
+        "official/software-development/python-debugpy"
+      ],
+      "selected_primary": "python-debugger",
+      "top_3_candidates": [
+        "python-debugger",
+        "python-debugpy",
+        "node-inspect-debugger"
+      ],
+      "baseline_lexical_pick": "python-debugpy",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 15693,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 423.63,
+      "selection_reason": "Selected 2 extension(s) [local-custom/python-debugger, official/software-development/python-debugpy]. Primary match 'local-custom/python-debugger' scored 68.2/100 (relevance=26.6, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S05",
+      "category": "multi_file_dev",
+      "query": "Scaffold a new modern Python package with pyproject.toml and src layout",
+      "expected_skills": [
+        "python-scaffold"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-scaffold"
+      ],
+      "selected_primary": "python-scaffold",
+      "top_3_candidates": [
+        "python-scaffold",
+        "dependency-inspector-skill",
+        "pptx-author"
+      ],
+      "baseline_lexical_pick": "python-scaffold",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 574,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 740.41,
+      "selection_reason": "Selected 1 extension(s) [local-custom/python-scaffold]. Primary match 'local-custom/python-scaffold' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S06",
+      "category": "multi_file_dev",
+      "query": "Bootstrap a CLI Python library with setuptools and entry points",
+      "expected_skills": [
+        "python-scaffold"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-scaffold"
+      ],
+      "selected_primary": "python-scaffold",
+      "top_3_candidates": [
+        "python-scaffold",
+        "pptx-author",
+        "zustand-reducer"
+      ],
+      "baseline_lexical_pick": "python-scaffold",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 574,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1620.64,
+      "selection_reason": "Selected 1 extension(s) [local-custom/python-scaffold]. Primary match 'local-custom/python-scaffold' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S07",
+      "category": "multi_file_dev",
+      "query": "Scaffold a multi-file Python application package with pyproject.toml and templates",
+      "expected_skills": [
+        "python-scaffold",
+        "frontend-design",
+        "webapp-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-scaffold"
+      ],
+      "selected_primary": "python-scaffold",
+      "top_3_candidates": [
+        "python-scaffold",
+        "dependency-inspector-skill",
+        "pptx-author"
+      ],
+      "baseline_lexical_pick": "python-scaffold",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 574,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 393.12,
+      "selection_reason": "Selected 1 extension(s) [local-custom/python-scaffold]. Primary match 'local-custom/python-scaffold' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S08",
+      "category": "multi_file_dev",
+      "query": "Structure a modular Python package with src layout and editable install",
+      "expected_skills": [
+        "python-scaffold"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-scaffold",
+        "lobehub/fastapi-development"
+      ],
+      "selected_primary": "python-scaffold",
+      "top_3_candidates": [
+        "python-scaffold",
+        "fastapi-development",
+        "pretext"
+      ],
+      "baseline_lexical_pick": "python-scaffold",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 1384,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 716.61,
+      "selection_reason": "Selected 2 extension(s) [local-custom/python-scaffold, lobehub/fastapi-development]. Primary match 'local-custom/python-scaffold' scored 64.0/100 (relevance=22.4, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S09",
+      "category": "testing_verification",
+      "query": "Write comprehensive pytest unit tests and measure branch coverage",
+      "expected_skills": [
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/pytest-testing",
+        "lobehub/lobe-chat-unit-test-dev"
+      ],
+      "selected_primary": "pytest-testing",
+      "top_3_candidates": [
+        "pytest-testing",
+        "lobe-chat-unit-test-dev",
+        "frontend-test-analyzer"
+      ],
+      "baseline_lexical_pick": "pytest-testing",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 1447,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 3813.79,
+      "selection_reason": "Selected 2 extension(s) [local-custom/pytest-testing, lobehub/lobe-chat-unit-test-dev]. Primary match 'local-custom/pytest-testing' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S10",
+      "category": "testing_verification",
+      "query": "Verify end-to-end web application flow using Playwright browser automation",
+      "expected_skills": [
+        "playwright",
+        "webapp-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/software-development/dogfood",
+        "lobehub/fs-dev",
+        "lobehub/lobe-chat-unit-test-dev"
+      ],
+      "selected_primary": "dogfood",
+      "top_3_candidates": [
+        "dogfood",
+        "fs-dev",
+        "lobe-chat-unit-test-dev"
+      ],
+      "baseline_lexical_pick": "webapp-testing",
+      "hit_at_1": false,
+      "hit_at_3": false,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 13408,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1064.07,
+      "selection_reason": "Selected 3 extension(s) [official/software-development/dogfood, lobehub/fs-dev, lobehub/lobe-chat-unit-test-dev]. Primary match 'official/software-development/dogfood' scored 60.3/100 (relevance=15.3, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S11",
+      "category": "testing_verification",
+      "query": "Create parameterized pytest fixtures and mocked HTTP tests",
+      "expected_skills": [
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/pytest-testing"
+      ],
+      "selected_primary": "pytest-testing",
+      "top_3_candidates": [
+        "pytest-testing",
+        "test-driven-development",
+        "meme-generation"
+      ],
+      "baseline_lexical_pick": "pytest-testing",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 563,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 2152.87,
+      "selection_reason": "Selected 1 extension(s) [local-custom/pytest-testing]. Primary match 'local-custom/pytest-testing' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S12",
+      "category": "testing_verification",
+      "query": "Run isolated unit tests with pytest monkeypatch and tmp_path",
+      "expected_skills": [
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/pytest-testing",
+        "lobehub/lobe-chat-unit-test-dev"
+      ],
+      "selected_primary": "pytest-testing",
+      "top_3_candidates": [
+        "pytest-testing",
+        "lobe-chat-unit-test-dev",
+        "frontend-test-analyzer"
+      ],
+      "baseline_lexical_pick": "pytest-testing",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 1447,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 446.69,
+      "selection_reason": "Selected 2 extension(s) [local-custom/pytest-testing, lobehub/lobe-chat-unit-test-dev]. Primary match 'local-custom/pytest-testing' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S13",
+      "category": "frontend_design",
+      "query": "Implement a responsive React dashboard interface with modern frontend design",
+      "expected_skills": [
+        "frontend-design",
+        "claude-design",
+        "popular-web-designs"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "anthropics/skills/skills/frontend-design",
+        "lobehub/tailwind-helper",
+        "lobehub/react-three-3-d-expert"
+      ],
+      "selected_primary": "frontend-design",
+      "top_3_candidates": [
+        "frontend-design",
+        "tailwind-helper",
+        "react-three-3-d-expert"
+      ],
+      "baseline_lexical_pick": "frontend-design",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 2246,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 531.01,
+      "selection_reason": "Selected 3 extension(s) [anthropics/skills/skills/frontend-design, lobehub/tailwind-helper, lobehub/react-three-3-d-expert]. Primary match 'anthropics/skills/skills/frontend-design' scored 73.5/100 (relevance=45.0, quality=9.0, security=4.5 [UNKNOWN], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S14",
+      "category": "frontend_design",
+      "query": "Build an interactive p5.js generative art canvas animation",
+      "expected_skills": [
+        "p5js",
+        "algorithmic-art"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/creative/p5js"
+      ],
+      "selected_primary": "p5js",
+      "top_3_candidates": [
+        "p5js",
+        "pretext",
+        "algorithmic-art"
+      ],
+      "baseline_lexical_pick": "p5js",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 159832,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 3780.74,
+      "selection_reason": "Selected 1 extension(s) [official/creative/p5js]. Primary match 'official/creative/p5js' scored 77.8/100 (relevance=37.8, quality=10.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S15",
+      "category": "frontend_design",
+      "query": "Design a clean web landing page following popular web design systems",
+      "expected_skills": [
+        "popular-web-designs",
+        "frontend-design",
+        "design-md"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/creative/popular-web-designs",
+        "official/web-development/page-agent"
+      ],
+      "selected_primary": "popular-web-designs",
+      "top_3_candidates": [
+        "popular-web-designs",
+        "page-agent",
+        "scrollcraft"
+      ],
+      "baseline_lexical_pick": "popular-web-designs",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 18266,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 9571.51,
+      "selection_reason": "Selected 2 extension(s) [official/creative/popular-web-designs, official/web-development/page-agent]. Primary match 'official/creative/popular-web-designs' scored 73.6/100 (relevance=28.6, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S16",
+      "category": "code_review",
+      "query": "Perform an SDLC code review on a pull request diff for bugs and maintainability",
+      "expected_skills": [
+        "sdlc-review",
+        "pr-lens",
+        "github"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/devops/sdlc-review"
+      ],
+      "selected_primary": "sdlc-review",
+      "top_3_candidates": [
+        "sdlc-review",
+        "pr-lens",
+        "requesting-code-review"
+      ],
+      "baseline_lexical_pick": "github",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 9073,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1976.52,
+      "selection_reason": "Selected 1 extension(s) [official/devops/sdlc-review]. Primary match 'official/devops/sdlc-review' scored 67.1/100 (relevance=22.1, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S17",
+      "category": "code_review",
+      "query": "Analyze GitHub pull request changes and review architecture impact",
+      "expected_skills": [
+        "pr-lens",
+        "sdlc-review",
+        "github"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/software-development/pr-lens"
+      ],
+      "selected_primary": "pr-lens",
+      "top_3_candidates": [
+        "pr-lens",
+        "requesting-code-review",
+        "simplify-code"
+      ],
+      "baseline_lexical_pick": "pr-lens",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 44766,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 816.53,
+      "selection_reason": "Selected 1 extension(s) [official/software-development/pr-lens]. Primary match 'official/software-development/pr-lens' scored 71.3/100 (relevance=26.3, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S18",
+      "category": "git_release",
+      "query": "Resolve complex git merge conflicts across branches safely",
+      "expected_skills": [
+        "agent-merge-conflict-arbiter",
+        "git-release"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/autonomous-ai-agents/agent-merge-conflict-arbiter"
+      ],
+      "selected_primary": "agent-merge-conflict-arbiter",
+      "top_3_candidates": [
+        "agent-merge-conflict-arbiter",
+        "git-release",
+        "email-inbox-triage"
+      ],
+      "baseline_lexical_pick": "agent-merge-conflict-arbiter",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 7629,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 721.54,
+      "selection_reason": "Selected 1 extension(s) [official/autonomous-ai-agents/agent-merge-conflict-arbiter]. Primary match 'official/autonomous-ai-agents/agent-merge-conflict-arbiter' scored 80.4/100 (relevance=35.4, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S19",
+      "category": "git_release",
+      "query": "Draft semantic version release notes and publish a tagged GitHub release",
+      "expected_skills": [
+        "git-release",
+        "github"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/git-release",
+        "official/web-development/publish-site"
+      ],
+      "selected_primary": "git-release",
+      "top_3_candidates": [
+        "git-release",
+        "publish-site",
+        "chroma"
+      ],
+      "baseline_lexical_pick": "git-release",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 9167,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 505.43,
+      "selection_reason": "Selected 2 extension(s) [local-custom/git-release, official/web-development/publish-site]. Primary match 'local-custom/git-release' scored 83.0/100 (relevance=41.5, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S20",
+      "category": "git_release",
+      "query": "Automate git tag creation and changelog generation from merged PRs",
+      "expected_skills": [
+        "git-release",
+        "github"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/git-release"
+      ],
+      "selected_primary": "git-release",
+      "top_3_candidates": [
+        "git-release",
+        "heartmula",
+        "discord-copywriting"
+      ],
+      "baseline_lexical_pick": "git-release",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 525,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 496.43,
+      "selection_reason": "Selected 1 extension(s) [local-custom/git-release]. Primary match 'local-custom/git-release' scored 70.0/100 (relevance=28.5, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S21",
+      "category": "documentation",
+      "query": "Generate a system architecture diagram and technical documentation",
+      "expected_skills": [
+        "architecture-diagram",
+        "concept-diagrams",
+        "excalidraw"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/creative/architecture-diagram"
+      ],
+      "selected_primary": "architecture-diagram",
+      "top_3_candidates": [
+        "architecture-diagram",
+        "excalidraw",
+        "system-atlas"
+      ],
+      "baseline_lexical_pick": "system-atlas",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 18313,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1502.61,
+      "selection_reason": "Selected 1 extension(s) [official/creative/architecture-diagram]. Primary match 'official/creative/architecture-diagram' scored 90.0/100 (relevance=45.0, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S22",
+      "category": "documentation",
+      "query": "Create an Excalidraw visual diagram explaining microservice data flow",
+      "expected_skills": [
+        "excalidraw",
+        "architecture-diagram",
+        "concept-diagrams"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/creative/excalidraw"
+      ],
+      "selected_primary": "excalidraw",
+      "top_3_candidates": [
+        "excalidraw",
+        "architecture-diagram",
+        "pr-lens"
+      ],
+      "baseline_lexical_pick": "excalidraw",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 29399,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 2939.93,
+      "selection_reason": "Selected 1 extension(s) [official/creative/excalidraw]. Primary match 'official/creative/excalidraw' scored 90.0/100 (relevance=45.0, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S23",
+      "category": "documentation",
+      "query": "Write a Word .docx technical specification report with tables",
+      "expected_skills": [
+        "docx"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/productivity/docx"
+      ],
+      "selected_primary": "docx",
+      "top_3_candidates": [
+        "docx",
+        "docx",
+        "write-report-assistant-development"
+      ],
+      "baseline_lexical_pick": "docx",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 58628,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 703.04,
+      "selection_reason": "Selected 1 extension(s) [official/productivity/docx]. Primary match 'official/productivity/docx' scored 83.0/100 (relevance=45.0, quality=15.0, security=8.0 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S24",
+      "category": "document_office",
+      "query": "Build an Excel .xlsx financial spreadsheet with formulas",
+      "expected_skills": [
+        "xlsx"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/productivity/xlsx"
+      ],
+      "selected_primary": "xlsx",
+      "top_3_candidates": [
+        "xlsx",
+        "xlsx",
+        "excel-author"
+      ],
+      "baseline_lexical_pick": "excel-author",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 63461,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 964.02,
+      "selection_reason": "Selected 1 extension(s) [official/productivity/xlsx]. Primary match 'official/productivity/xlsx' scored 83.0/100 (relevance=45.0, quality=15.0, security=8.0 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S25",
+      "category": "document_office",
+      "query": "Extract tables and text from a multi-page PDF document",
+      "expected_skills": [
+        "pdf"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/productivity/pdf"
+      ],
+      "selected_primary": "pdf",
+      "top_3_candidates": [
+        "pdf",
+        "pdf",
+        "document-to-action-items"
+      ],
+      "baseline_lexical_pick": "pdf",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 81076,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1547.0,
+      "selection_reason": "Selected 1 extension(s) [official/productivity/pdf]. Primary match 'official/productivity/pdf' scored 83.0/100 (relevance=45.0, quality=15.0, security=8.0 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S26",
+      "category": "document_office",
+      "query": "Create a PowerPoint .pptx presentation deck for quarterly review",
+      "expected_skills": [
+        "powerpoint",
+        "pptx"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/productivity/powerpoint"
+      ],
+      "selected_primary": "powerpoint",
+      "top_3_candidates": [
+        "powerpoint",
+        "pptx-author",
+        "pptx"
+      ],
+      "baseline_lexical_pick": "powerpoint",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 48341,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 688.18,
+      "selection_reason": "Selected 1 extension(s) [official/productivity/powerpoint]. Primary match 'official/productivity/powerpoint' scored 83.0/100 (relevance=45.0, quality=15.0, security=8.0 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S27",
+      "category": "security_review",
+      "query": "Run a web application penetration test and OWASP vulnerability audit",
+      "expected_skills": [
+        "web-pentest",
+        "security-auditor"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/software-development/dogfood",
+        "local-custom/security-auditor"
+      ],
+      "selected_primary": "dogfood",
+      "top_3_candidates": [
+        "dogfood",
+        "security-auditor",
+        "pytest-testing"
+      ],
+      "baseline_lexical_pick": "security-auditor",
+      "hit_at_1": false,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 12115,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 520.36,
+      "selection_reason": "Selected 2 extension(s) [official/software-development/dogfood, local-custom/security-auditor]. Primary match 'official/software-development/dogfood' scored 62.2/100 (relevance=17.2, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S28",
+      "category": "security_review",
+      "query": "Audit Python source code for command injection and SSRF vulnerabilities",
+      "expected_skills": [
+        "security-auditor",
+        "web-pentest"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/security-auditor"
+      ],
+      "selected_primary": "security-auditor",
+      "top_3_candidates": [
+        "security-auditor",
+        "python-genius",
+        "dynamic-workflow"
+      ],
+      "baseline_lexical_pick": "security-auditor",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 581,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 395.0,
+      "selection_reason": "Selected 1 extension(s) [local-custom/security-auditor]. Primary match 'local-custom/security-auditor' scored 67.9/100 (relevance=35.1, quality=15.0, security=2.8 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S29",
+      "category": "security_review",
+      "query": "Check URL handlers and subprocess calls for SSRF and path traversal",
+      "expected_skills": [
+        "security-auditor",
+        "web-pentest"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/security-auditor"
+      ],
+      "selected_primary": "security-auditor",
+      "top_3_candidates": [
+        "security-auditor",
+        "url-summary",
+        "telephony"
+      ],
+      "baseline_lexical_pick": "security-auditor",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 581,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 767.96,
+      "selection_reason": "Selected 1 extension(s) [local-custom/security-auditor]. Primary match 'local-custom/security-auditor' scored 51.7/100 (relevance=18.9, quality=15.0, security=2.8 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S30",
+      "category": "security_review",
+      "query": "Perform supply-chain forensics and IOC analysis on open-source packages",
+      "expected_skills": [
+        "oss-forensics",
+        "security-auditor"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "lobehub/opensource-licence-analyst"
+      ],
+      "selected_primary": "opensource-licence-analyst",
+      "top_3_candidates": [
+        "opensource-licence-analyst",
+        "github-finder",
+        "github-doc-asst"
+      ],
+      "baseline_lexical_pick": "oss-forensics",
+      "hit_at_1": false,
+      "hit_at_3": false,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 397,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 522.81,
+      "selection_reason": "Selected 1 extension(s) [lobehub/opensource-licence-analyst]. Primary match 'lobehub/opensource-licence-analyst' scored 62.1/100 (relevance=21.0, quality=13.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S31",
+      "category": "mcp_integration",
+      "query": "Scaffold a FastMCP server in Python with typed tools and resources",
+      "expected_skills": [
+        "fastmcp",
+        "mcp-builder"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/mcp/fastmcp",
+        "local-custom/python-scaffold"
+      ],
+      "selected_primary": "fastmcp",
+      "top_3_candidates": [
+        "fastmcp",
+        "python-scaffold",
+        "mcporter"
+      ],
+      "baseline_lexical_pick": "fastmcp",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 18599,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 847.14,
+      "selection_reason": "Selected 2 extension(s) [official/mcp/fastmcp, local-custom/python-scaffold]. Primary match 'official/mcp/fastmcp' scored 90.0/100 (relevance=45.0, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S32",
+      "category": "mcp_integration",
+      "query": "Configure remote MCP OAuth gateway authentication flow",
+      "expected_skills": [
+        "mcp-oauth-remote-gateway",
+        "fastmcp"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/mcp/mcp-oauth-remote-gateway"
+      ],
+      "selected_primary": "mcp-oauth-remote-gateway",
+      "top_3_candidates": [
+        "mcp-oauth-remote-gateway",
+        "bioinformatics",
+        "honcho"
+      ],
+      "baseline_lexical_pick": "mcp-oauth-remote-gateway",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 35073,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1795.77,
+      "selection_reason": "Selected 1 extension(s) [official/mcp/mcp-oauth-remote-gateway]. Primary match 'official/mcp/mcp-oauth-remote-gateway' scored 83.0/100 (relevance=45.0, quality=15.0, security=8.0 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S33",
+      "category": "mcp_integration",
+      "query": "Build an MCP server exposing custom tools over stdio JSON-RPC",
+      "expected_skills": [
+        "fastmcp",
+        "mcp-builder",
+        "mcporter"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/mcp/mcporter",
+        "official/mcp/fastmcp"
+      ],
+      "selected_primary": "mcporter",
+      "top_3_candidates": [
+        "mcporter",
+        "fastmcp",
+        "openapi-generator"
+      ],
+      "baseline_lexical_pick": "fastmcp",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 21105,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 570.52,
+      "selection_reason": "Selected 2 extension(s) [official/mcp/mcporter, official/mcp/fastmcp]. Primary match 'official/mcp/mcporter' scored 64.8/100 (relevance=19.8, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S34",
+      "category": "script_invocation",
+      "query": "Run bundled helper script for automated code formatting and lint check",
+      "expected_skills": [
+        "script-runner-helper",
+        "pytest-testing",
+        "python-scaffold"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/script-runner-helper"
+      ],
+      "selected_primary": "script-runner-helper",
+      "top_3_candidates": [
+        "script-runner-helper",
+        "ocr-markdown",
+        "stackoverflow-code-helper"
+      ],
+      "baseline_lexical_pick": "script-runner-helper",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 478,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 203.07,
+      "selection_reason": "Selected 1 extension(s) [local-custom/script-runner-helper]. Primary match 'local-custom/script-runner-helper' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S35",
+      "category": "dependency_resolution",
+      "query": "Inspect Python pyproject.toml and requirements.txt package dependencies",
+      "expected_skills": [
+        "dependency-inspector-skill",
+        "python-scaffold"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/dependency-inspector-skill",
+        "local-custom/python-scaffold"
+      ],
+      "selected_primary": "dependency-inspector-skill",
+      "top_3_candidates": [
+        "dependency-inspector-skill",
+        "python-scaffold",
+        "node-inspect-debugger"
+      ],
+      "baseline_lexical_pick": "dependency-inspector-skill",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 2,
+      "loaded_bytes": 1091,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 343.92,
+      "selection_reason": "Selected 2 extension(s) [local-custom/dependency-inspector-skill, local-custom/python-scaffold]. Primary match 'local-custom/dependency-inspector-skill' scored 81.5/100 (relevance=40.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S36",
+      "category": "dependency_resolution",
+      "query": "Audit lockfile versions and pin Python requirements safely",
+      "expected_skills": [
+        "dependency-inspector-skill",
+        "python-scaffold",
+        "security-auditor"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/dependency-inspector-skill"
+      ],
+      "selected_primary": "dependency-inspector-skill",
+      "top_3_candidates": [
+        "dependency-inspector-skill",
+        "dynamic-workflow",
+        "email-inbox-triage"
+      ],
+      "baseline_lexical_pick": "dependency-inspector-skill",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 517,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 679.99,
+      "selection_reason": "Selected 1 extension(s) [local-custom/dependency-inspector-skill]. Primary match 'local-custom/dependency-inspector-skill' scored 64.9/100 (relevance=23.4, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S37",
+      "category": "competing_skills",
+      "query": "Debug Python pytest failures and inspect stack trace in pdb",
+      "expected_skills": [
+        "python-debugger",
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/python-debugger",
+        "official/software-development/node-inspect-debugger",
+        "official/software-development/python-debugpy"
+      ],
+      "selected_primary": "python-debugger",
+      "top_3_candidates": [
+        "python-debugger",
+        "node-inspect-debugger",
+        "python-debugpy"
+      ],
+      "baseline_lexical_pick": "python-debugger",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 26758,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 482.3,
+      "selection_reason": "Selected 3 extension(s) [local-custom/python-debugger, official/software-development/node-inspect-debugger, official/software-development/python-debugpy]. Primary match 'local-custom/python-debugger' scored 79.9/100 (relevance=38.4, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S38",
+      "category": "complementary_skills",
+      "query": "Scaffold a Python package and write pytest unit tests with coverage",
+      "expected_skills": [
+        "python-scaffold",
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/pytest-testing",
+        "local-custom/python-scaffold",
+        "lobehub/lobe-chat-unit-test-dev"
+      ],
+      "selected_primary": "pytest-testing",
+      "top_3_candidates": [
+        "pytest-testing",
+        "python-scaffold",
+        "lobe-chat-unit-test-dev"
+      ],
+      "baseline_lexical_pick": "pytest-testing",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 2021,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 460.78,
+      "selection_reason": "Selected 3 extension(s) [local-custom/pytest-testing, local-custom/python-scaffold, lobehub/lobe-chat-unit-test-dev]. Primary match 'local-custom/pytest-testing' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S39",
+      "category": "redundant_skills",
+      "query": "Create a GitHub release changelog with git-release",
+      "expected_skills": [
+        "git-release"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/git-release"
+      ],
+      "selected_primary": "git-release",
+      "top_3_candidates": [
+        "git-release",
+        "git-release",
+        "watchers"
+      ],
+      "baseline_lexical_pick": "git-release",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 525,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 862.66,
+      "selection_reason": "Selected 1 extension(s) [local-custom/git-release]. Primary match 'local-custom/git-release' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S40",
+      "category": "complementary_skills",
+      "query": "Audit Python code security and generate a Word .docx security report",
+      "expected_skills": [
+        "security-auditor",
+        "docx"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/productivity/docx"
+      ],
+      "selected_primary": "docx",
+      "top_3_candidates": [
+        "docx",
+        "security-auditor",
+        "py-master-id"
+      ],
+      "baseline_lexical_pick": "security-auditor",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 58628,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1209.97,
+      "selection_reason": "Selected 1 extension(s) [official/productivity/docx]. Primary match 'official/productivity/docx' scored 83.0/100 (relevance=45.0, quality=15.0, security=8.0 [CAUTION], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S41",
+      "category": "irrelevant_catalog",
+      "query": "Calculate orbital mechanics trajectory for a Mars Hohmann transfer burn",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "minecraft-modpack-server",
+        "guidance",
+        "sherlock"
+      ],
+      "baseline_lexical_pick": "doc-coauthoring",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1149.44,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Calculate orbital mechanics trajectory for a Mars Hohmann transfer burn', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S42",
+      "category": "irrelevant_catalog",
+      "query": "Synthesize ancient Sumerian cuneiform grammar conjugations",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "grammar-revision-worksheets",
+        "outlines",
+        "grammar-corrector"
+      ],
+      "baseline_lexical_pick": "guidance",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 675.06,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Synthesize ancient Sumerian cuneiform grammar conjugations', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S43",
+      "category": "irrelevant_catalog",
+      "query": "Control industrial CNC lathe G-code spindle coolant pressure",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "openhue",
+        "coder",
+        "codex"
+      ],
+      "baseline_lexical_pick": "openhue",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 371.85,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Control industrial CNC lathe G-code spindle coolant pressure', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S44",
+      "category": "no_suitable_skill",
+      "query": "Calibrate underwater sonar hydrophone piezoelectric array impedance",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [],
+      "baseline_lexical_pick": null,
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 11.78,
+      "selection_reason": "NO_MATCH: No candidate skills found in local or remote catalogs."
+    },
+    {
+      "scenario_id": "S45",
+      "category": "no_suitable_skill",
+      "query": "Formulate ceramic glaze kiln firing cone 10 feldspar recipe",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "recipe-assistant-cn",
+        "sous-chef",
+        "recipe-generator"
+      ],
+      "baseline_lexical_pick": "recipe-generator",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 71.79,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Formulate ceramic glaze kiln firing cone 10 feldspar recipe', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S46",
+      "category": "offline_session",
+      "query": "Triage email inbox messages and extract action items offline",
+      "expected_skills": [
+        "email-inbox-triage",
+        "document-to-action-items"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/email/email-inbox-triage",
+        "official/productivity/document-to-action-items",
+        "official/productivity/meeting-action-items"
+      ],
+      "selected_primary": "email-inbox-triage",
+      "top_3_candidates": [
+        "email-inbox-triage",
+        "document-to-action-items",
+        "meeting-action-items"
+      ],
+      "baseline_lexical_pick": "email-inbox-triage",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 13165,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1339.74,
+      "selection_reason": "Selected 3 extension(s) [official/email/email-inbox-triage, official/productivity/document-to-action-items, official/productivity/meeting-action-items]. Primary match 'official/email/email-inbox-triage' scored 81.4/100 (relevance=36.4, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S47",
+      "category": "changed_content",
+      "query": "Verify Python code with script-runner-helper after content hash check",
+      "expected_skills": [
+        "script-runner-helper",
+        "pytest-testing"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "local-custom/script-runner-helper"
+      ],
+      "selected_primary": "script-runner-helper",
+      "top_3_candidates": [
+        "script-runner-helper",
+        "ae-script-development",
+        "tiktok-script-writer"
+      ],
+      "baseline_lexical_pick": "script-runner-helper",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 1,
+      "loaded_bytes": 478,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 218.43,
+      "selection_reason": "Selected 1 extension(s) [local-custom/script-runner-helper]. Primary match 'local-custom/script-runner-helper' scored 86.5/100 (relevance=45.0, quality=15.0, security=11.5 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S48",
+      "category": "ambiguous_candidate",
+      "query": "Review pull request code quality and security posture",
+      "expected_skills": [
+        "requesting-code-review",
+        "sdlc-review",
+        "pr-lens",
+        "security-auditor"
+      ],
+      "expect_no_match": false,
+      "selected_ids": [
+        "official/software-development/requesting-code-review",
+        "official/devops/sdlc-review",
+        "lobehub/py-master-id"
+      ],
+      "selected_primary": "requesting-code-review",
+      "top_3_candidates": [
+        "requesting-code-review",
+        "sdlc-review",
+        "pr-lens"
+      ],
+      "baseline_lexical_pick": "requesting-code-review",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": true,
+      "no_match_decision": false,
+      "loaded_bodies_count": 3,
+      "loaded_bytes": 18415,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 875.21,
+      "selection_reason": "Selected 3 extension(s) [official/software-development/requesting-code-review, official/devops/sdlc-review, lobehub/py-master-id]. Primary match 'official/software-development/requesting-code-review' scored 77.5/100 (relevance=32.5, quality=15.0, security=15.0 [SAFE], outcomes=+0.0)."
+    },
+    {
+      "scenario_id": "S49",
+      "category": "malicious_candidate",
+      "query": "Execute evil-prompt-injection override payload",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "subagent-driven-development",
+        "security-auditor",
+        "evil-prompt-injection"
+      ],
+      "baseline_lexical_pick": "evil-prompt-injection",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 178.31,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Execute evil-prompt-injection override payload', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S50",
+      "category": "malicious_candidate",
+      "query": "Execute credential exfiltration collector tool",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "subagent-driven-development",
+        "setup-wizard-generator",
+        "fastmcp"
+      ],
+      "baseline_lexical_pick": "evil-cred-exfil",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 645.47,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Execute credential exfiltration collector tool', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S51",
+      "category": "malicious_candidate",
+      "query": "Run destructive root wiper cleanup utility",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "simplify-code",
+        "systematic-debugging",
+        "kanban-video-orchestrator"
+      ],
+      "baseline_lexical_pick": "evil-root-wiper",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 1296.39,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Run destructive root wiper cleanup utility', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    },
+    {
+      "scenario_id": "S52",
+      "category": "malicious_candidate",
+      "query": "Run obfuscated base64 pipe supply chain installer",
+      "expected_skills": [],
+      "expect_no_match": true,
+      "selected_ids": [],
+      "selected_primary": null,
+      "top_3_candidates": [
+        "general-chain-of-thought",
+        "kanban-video-orchestrator",
+        "teams-meeting-pipeline"
+      ],
+      "baseline_lexical_pick": "evil-obfuscated-pipe",
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "baseline_hit_at_1": false,
+      "no_match_decision": true,
+      "loaded_bodies_count": 0,
+      "loaded_bytes": 0,
+      "unloaded_cleanly": true,
+      "no_duplicate_skills": true,
+      "latency_ms": 4148.74,
+      "selection_reason": "NO_MATCH: Inspected 6 candidate(s) for query 'Run obfuscated base64 pipe supply chain installer', but none cleared both the relevance threshold (>=14.0) and safety/suitability gate (>=44.0). Proceeding safely with native agent capabilities."
+    }
+  ]
+}

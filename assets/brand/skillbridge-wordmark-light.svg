@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 96" width="460" height="96" role="img" aria-label="SkillBridge Light-Theme Wordmark">
+  <title>SkillBridge Wordmark (Light Surface)</title>
+  <rect width="460" height="96" rx="14" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+  <g transform="translate(16, 12) scale(0.6)">
+    <rect x="6" y="6" width="108" height="108" rx="22" fill="#0F172A" stroke="#1E293B" stroke-width="3"/>
+    <path d="M60 18 L96 34 V62 C96 84 80 98 60 104 C40 98 24 84 24 62 V34 Z" fill="#1E293B" stroke="#334155" stroke-width="2.5"/>
+    <path d="M32 72 C44 46, 76 46, 88 72" fill="none" stroke="#0284C7" stroke-width="5" stroke-linecap="round"/>
+    <path d="M28 72 H92" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round"/>
+    <line x1="46" y1="56" x2="46" y2="72" stroke="#38BDF8" stroke-width="3"/>
+    <line x1="60" y1="51" x2="60" y2="72" stroke="#0D9488" stroke-width="3"/>
+    <line x1="74" y1="56" x2="74" y2="72" stroke="#38BDF8" stroke-width="3"/>
+    <circle cx="32" cy="72" r="5.5" fill="#38BDF8"/>
+    <circle cx="60" cy="51" r="6" fill="#14B8A6"/>
+    <circle cx="88" cy="72" r="5.5" fill="#14B8A6"/>
+  </g>
+  <text x="104" y="54" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.8" fill="#0F172A">Skill<tspan fill="#0284C7">Bridge</tspan></text>
+  <text x="106" y="76" font-family="'JetBrains Mono', 'Fira Code', monospace" font-size="11.5" font-weight="600" letter-spacing="1.4" fill="#475569">VERIFIED AGENT EXTENSION RUNTIME · V2.0</text>
+</svg>

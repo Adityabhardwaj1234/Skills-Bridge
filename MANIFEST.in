@@ -1,0 +1,6 @@
+recursive-include src/skillbridge/data *
+recursive-include docs *.md
+recursive-include examples *
+include CHANGELOG.md
+include LICENSE
+include README.md

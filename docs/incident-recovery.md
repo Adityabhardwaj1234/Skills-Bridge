@@ -1,0 +1,25 @@
+# Incident Recovery, Rollback & Migration Guide (`docs/incident-recovery.md`)
+
+## 1. Quarantine & Blocked Bundle Recovery
+
+When an extension fails Tier 0–3 security verification (`AssuranceState.UNSAFE` or `SecurityVerdict.DANGEROUS`):
+1. The active import or installation is aborted immediately before any native client files are modified.
+2. A forensic snapshot and `quarantine_metadata.json` are written to `~/.skillbridge/quarantine/<name>-<hash>/`.
+3. Any temporary staging files in `quarantine_staging/` or `active_staging/` are deleted.
+
+## 2. Rolling Back Native Client Deployments
+
+Every `skillbridge install --apply` operation creates a backup manifest in `~/.skillbridge/backups/<plan_id>/backup_manifest.json`. To revert a native OpenCode or Claude Code deployment:
+
+```powershell
+python -m skillbridge rollback <plan_id>
+```
+
+This atomically restores `opencode.jsonc`, `.mcp.json`, or `~/.claude.json` from the pre-install snapshot and removes newly installed skill/agent files.
+
+## 3. Upgrading from SkillBridge v1 to v2
+
+SkillBridge v2 preserves compatibility with v1 SQLite databases (`skillbridge.db`) and CLI scripts:
+1. Existing catalog records (`extensions`, `extensions_fts`, `security_scans`, `outcomes`, `audit_log`) are retained without destructive schema drops; the schema-v2 migration re-aligns FTS5 `rowid` maintenance for older catalogs.
+2. Default v2 settings (`active_skill_limit=25`, `memory_threshold_mib=250.0`, `security_fail_closed=True`) are initialized in `~/.skillbridge/settings.json` only if not already customized.
+3. Previously cached skills with executable scripts are **not** automatically activated; they must pass through the v2 Tier 0–3 verification pipeline on import.

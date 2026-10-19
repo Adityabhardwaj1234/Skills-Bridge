@@ -1,0 +1,112 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:ed86272d-e450-473b-98be-ed218251a2db",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-19T14:37:40.420537+00:00",
+    "component": {
+      "type": "application",
+      "name": "skillbridge",
+      "version": "2.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "PyYAML",
+      "version": "6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "NVIDIA/SkillSpector (Adapter & Apache-2.0 Tier 1 Contract)",
+      "version": "2.12.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/NVIDIA/SkillSpector",
+          "comment": "Pinned commit 95a52d89fa16f608f0b18ccee76b0918ea4b7eef"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "domehahn/skil (Adapter & Apache-2.0 Tier 2 Assurance Closure Contract)",
+      "version": "0.2.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/domehahn/skil",
+          "comment": "Pinned commit 9016d9a21c5e1a2b5fb9c11b97100d444f7d7071"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "NVIDIA/SkillEvaluator (Adapter & Apache-2.0 Tier 3 Evaluator Contract)",
+      "version": "0.5.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/NVIDIA/SkillEvaluator",
+          "comment": "Pinned commit 6068b3a6d8895430c0ff35c89635e58f2d99f1c2"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "qualixar/skillfortify (Optional External CLI Subprocess Contract Only \u2014 Not Distributed)",
+      "version": "0.6.0",
+      "scope": "optional",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/qualixar/skillfortify",
+          "comment": "Pinned commit dbb5942deae46afdb5b85440d5f5d851c197c30e; excluded from bundle due to Elastic-2.0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "Elastic-2.0"
+          }
+        }
+      ]
+    }
+  ]
+}
