@@ -31,6 +31,8 @@ All notable changes to **SkillBridge** are documented in this file.
 - **Enforcement fixes**: deferred skill loading now runs before `assert_can_execute`, so `preflight --no-load` followed by protected execution works; `catalog_seed` audit events are only recorded on actual catalog changes or forced rescans.
 - **Cross-platform runtime**: guarded POSIX-only `resource` import and a Win32 working-set measurement fallback; Windows memory telemetry works without `psutil`.
 - **Product console**: new `skillbridge ui` command renders and optionally serves a self-contained live-state HTML console (`src/skillbridge/reporting/ui.py`).
+- **Live web-load hardening**: skills.sh records now use the API's canonical `source`/`skillId` fields; GitHub fetches resolve nested repo layouts (e.g. `skills/pdf` when an index reports only `pdf`); ClawHub index records with bare slugs resolve owners through live search; Smithery MCP verification now returns a real verdict; unknown IDs are never fuzzy-matched to unrelated MCP servers.
+- **Memory and reliability**: the 100k+ record Hermes live index is released from memory after catalog seeding (RSS drops from ~277 MiB to ~86 MiB on Windows), and a load that is immediately evicted by the memory governor now raises an actionable error instead of returning an empty handle.
 - **Documentation and packaging**: added `README.md`, `MANIFEST.in`, version alignment at 2.0.0, and parity regression tests (`tests/unit/test_v2_parity_fixes.py`).
 
 ### Migration from v1.0.0 to v2.0.0
