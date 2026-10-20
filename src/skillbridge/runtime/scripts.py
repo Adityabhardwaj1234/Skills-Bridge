@@ -10,10 +10,12 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from typing import Any
 
 from skillbridge.bundles.manager import BundleManifest, ScriptEntryPoint
+from skillbridge.discovery.normalizer import validate_bundle_rel_path
 from skillbridge.security.policy import redact_secrets
 from skillbridge.settings import RuntimeSettings
 from skillbridge.verification.models import AssuranceState, MultiTierVerificationResult
@@ -39,9 +41,26 @@ class ScriptExecutionResult:
     isolation_backend: str
     working_directory: str
     approved: bool
+    output_truncated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def _read_capped(stream: Any, cap: int) -> tuple[bytes, bool]:
+    """Drain a pipe while retaining at most ``cap`` bytes, so a noisy script cannot exhaust RAM."""
+    kept = bytearray()
+    truncated = False
+    while True:
+        chunk = stream.read(65536)
+        if not chunk:
+            break
+        room = cap - len(kept)
+        if room > 0:
+            kept.extend(chunk[:room])
+        if len(chunk) > max(room, 0):
+            truncated = True
+    return bytes(kept), truncated
 
 
 def _build_restricted_script_env(
@@ -121,12 +140,13 @@ class ScriptExecutionManager:
             )
 
         # 4. Validate relative script path inside staged bundle root
-        clean_rel = relative_script_path.strip().lstrip("./")
-        if ".." in Path(clean_rel).parts or clean_rel.startswith("/"):
+        try:
+            clean_rel = validate_bundle_rel_path(relative_script_path, allow_nested=True, max_depth=12)
+        except ValueError as exc:
             raise ScriptExecutionBlockedError(
-                f"Script path '{relative_script_path}' attempts to escape the bundle root."
-            )
-        target_script = (staged_bundle_dir / clean_rel).resolve()
+                f"Script path '{relative_script_path}' is not a safe bundle-relative path: {exc}"
+            ) from exc
+        target_script = staged_bundle_dir.joinpath(*clean_rel.split("/")).resolve()
         try:
             target_script.relative_to(staged_bundle_dir.resolve())
         except ValueError as exc:

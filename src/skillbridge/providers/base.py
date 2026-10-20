@@ -34,7 +34,8 @@ class GuardedHttpClient:
             write=self.config.connect_timeout_sec,
             pool=self.config.connect_timeout_sec,
         )
-        return httpx.Client(timeout=timeout, follow_redirects=False, transport=self._transport)
+        # Environment proxies would bypass the URL/DNS SSRF checks below; never trust them implicitly.
+        return httpx.Client(timeout=timeout, follow_redirects=False, trust_env=False, transport=self._transport)
 
     def get_bytes(
         self,
@@ -57,7 +58,9 @@ class GuardedHttpClient:
             try:
                 with self._make_client() as client:
                     for _hop in range(self.config.max_redirects + 1):
-                        safe, reason = is_safe_http_url(current_url, allow_localhost=allow_localhost)
+                        safe, reason = is_safe_http_url(
+                            current_url, allow_localhost=allow_localhost, resolve_dns=True
+                        )
                         if not safe:
                             logger.warning("Blocked unsafe URL %s: %s", current_url, reason)
                             return None

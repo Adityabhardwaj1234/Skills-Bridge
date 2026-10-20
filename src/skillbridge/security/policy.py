@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from skillbridge.config import SecurityPolicyConfig
-from skillbridge.discovery.normalizer import validate_bundle_rel_path, validate_skill_name
+from skillbridge.discovery.normalizer import is_link_like, validate_bundle_rel_path, validate_skill_name
 from skillbridge.models import ExtensionBundle, SecurityAssessment, SecurityVerdict, TrustLevel, utc_now_iso
 
 # Policy matrix: (SAFE, CAUTION, DANGEROUS, UNKNOWN)
@@ -202,17 +202,85 @@ class QuarantineManager:
         report_file.write_text(json.dumps(assessment.to_dict(), indent=2) + "\n", encoding="utf-8")
         return q_dir
 
+    def quarantine_staged_bundle(
+        self,
+        manifest: object,
+        verification: Dict[str, object],
+        *,
+        reason: str = "",
+    ) -> Path:
+        """Persist a blocked staged bundle plus its verification result under the home quarantine dir.
+
+        Only files enumerated in the manifest are copied, and each source is checked for
+        links/reparse points and containment. This keeps blocked-but-dangerous content available
+        for operator review without executing or following it.
+        """
+        skill_id = str(getattr(manifest, "skill_id", "quarantined-extension"))
+        name = str(getattr(manifest, "name", "") or skill_id.split("/")[-1])
+        digest = str(getattr(manifest, "bundle_digest", "nohash")).replace("sha256:", "")[:12]
+        try:
+            safe_name = validate_skill_name(name)
+        except ValueError:
+            safe_name = "quarantined-extension"
+        q_dir = self.quarantine_root / f"{safe_name}-{digest}"
+        if q_dir.exists():
+            shutil.rmtree(q_dir)
+        bundle_dir = q_dir / "bundle"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        staged = Path(str(getattr(manifest, "staged_path", "")))
+        copied = 0
+        if staged.is_dir():
+            for entry in getattr(manifest, "files", []):
+                rel = str(getattr(entry, "relative_path", ""))
+                try:
+                    safe_rel = validate_bundle_rel_path(rel)
+                except ValueError:
+                    continue
+                src = staged.joinpath(*safe_rel.split("/"))
+                if not src.is_file() or is_link_like(src):
+                    continue
+                dest = bundle_dir.joinpath(*safe_rel.split("/"))
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                if not dest.resolve().is_relative_to(bundle_dir.resolve()):
+                    continue
+                try:
+                    shutil.copy2(src, dest)
+                    copied += 1
+                except OSError:
+                    continue
+        report = {
+            "skill_id": skill_id,
+            "name": name,
+            "bundle_digest": getattr(manifest, "bundle_digest", ""),
+            "reason": reason,
+            "quarantined_at": utc_now_iso(),
+            "files_copied": copied,
+            "verification": verification,
+        }
+        (q_dir / "verification.json").write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
+        return q_dir
+
     def list_quarantined(self) -> list[dict]:
         items = []
         if not self.quarantine_root.exists():
             return items
         for entry in sorted(self.quarantine_root.iterdir()):
-            if entry.is_dir() and (entry / "security_assessment.json").is_file():
-                try:
-                    data = json.loads((entry / "security_assessment.json").read_text(encoding="utf-8"))
-                    items.append(data)
-                except (OSError, json.JSONDecodeError):
+            if not entry.is_dir():
+                continue
+            for report_name in ("security_assessment.json", "verification.json"):
+                report_file = entry / report_name
+                if not report_file.is_file():
                     continue
+                try:
+                    data = json.loads(report_file.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    break
+                if report_name == "verification.json":
+                    verification = data.get("verification", {})
+                    data.setdefault("verdict", verification.get("assurance_state", "UNKNOWN"))
+                    data.setdefault("extension_id", data.get("skill_id", entry.name))
+                items.append(data)
+                break
         return items
 
 

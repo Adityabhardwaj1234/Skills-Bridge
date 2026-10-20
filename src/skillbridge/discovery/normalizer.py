@@ -4,12 +4,39 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
+import os
 import re
+import socket
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import unquote, urlparse, urlsplit, urlunparse
 
 import yaml
+
+# Windows reparse points (junctions, mount points) are not reported by Path.is_symlink().
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+_WINDOWS_RESERVED_NAMES = frozenset(
+    {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+)
+
+
+def is_link_like(path: Path) -> bool:
+    """Return True for symlinks, junctions, and other Windows reparse points.
+
+    ``Path.is_symlink()`` misses NTFS junctions, which can otherwise be walked into by
+    ``os.walk``/``Path.rglob`` and turn into an out-of-root data disclosure. This helper is
+    intentionally conservative: any reparse point is rejected as a link.
+    """
+    try:
+        if path.is_symlink():
+            return True
+        is_junction = getattr(path, "is_junction", None)
+        if callable(is_junction) and is_junction():
+            return True
+        st = path.lstat()
+        return bool(getattr(st, "st_file_attributes", 0) & _FILE_ATTRIBUTE_REPARSE_POINT)
+    except OSError:
+        return False
 
 # Agent Skills specification regex for valid skill names (1-64 chars, lowercase alphanumeric + single hyphens)
 SKILL_NAME_SPEC_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -95,13 +122,17 @@ def validate_skill_frontmatter(frontmatter: Dict[str, Any], expected_dir_name: O
 def validate_bundle_rel_path(rel_path: str, *, allow_nested: bool = True, max_depth: int = 6) -> str:
     """Validate and normalize a relative path within an extension bundle.
 
-    Rejects empty paths, absolute paths, Windows drives/NTFS streams (:), '..' traversal, and excessive depth.
+    Rejects empty paths, absolute paths, Windows drives/NTFS streams (:), '..' traversal,
+    control characters, Windows device names (CON/NUL/COM1...), trailing dots/spaces, and
+    excessive depth. These names can escape the bundle directory or target a device on Windows.
     """
     if not isinstance(rel_path, str):
         raise ValueError("Path must be a string")
     raw = rel_path.strip()
     if not raw:
         raise ValueError("Empty path is not allowed")
+    if any(ord(ch) < 32 for ch in raw):
+        raise ValueError(f"Control characters are not allowed in bundle paths: {rel_path!r}")
     win = PureWindowsPath(raw)
     if win.is_absolute() or win.drive:
         raise ValueError(f"Absolute or drive path is not allowed: {rel_path}")
@@ -117,6 +148,11 @@ def validate_bundle_rel_path(rel_path: str, *, allow_nested: bool = True, max_de
         or any("\x00" in p for p in parts)
     ):
         raise ValueError(f"Unsafe bundle path rejected: {rel_path}")
+    for part in parts:
+        if part.endswith((" ", ".")):
+            raise ValueError(f"Windows-ambiguous trailing space/dot in bundle path: {rel_path}")
+        if part.split(".", 1)[0].lower() in _WINDOWS_RESERVED_NAMES:
+            raise ValueError(f"Windows reserved device name in bundle path: {rel_path}")
     if not allow_nested and len(parts) != 1:
         raise ValueError(f"Nested path not allowed for skill identifier: {rel_path}")
     if len(parts) > max_depth:
@@ -170,17 +206,33 @@ def extract_referenced_support_paths(skill_md_content: str) -> Optional[Set[str]
 
 
 def compute_directory_content_hash(directory: Path) -> str:
-    """Compute canonical SHA-256 content hash over (POSIX relative path, file bytes) in sorted string order."""
+    """Compute canonical SHA-256 content hash over (POSIX relative path, file bytes) in sorted string order.
+
+    Links, junctions, and hardlinks are skipped so an out-of-root target can never influence the
+    hash (or the bundle contents) during local skill discovery.
+    """
     if not directory.exists():
         return ""
     if directory.is_file():
-        return f"sha256:{hashlib.sha256(directory.read_bytes()).hexdigest()[:16]}"
+        try:
+            return f"sha256:{hashlib.sha256(directory.read_bytes()).hexdigest()[:16]}"
+        except OSError:
+            return ""
     h = hashlib.sha256()
     items = []
-    for p in directory.rglob("*"):
-        if p.is_symlink():
-            continue
-        if p.is_file():
+    for dirpath, dirnames, filenames in os.walk(directory, followlinks=False):
+        base = Path(dirpath)
+        dirnames[:] = sorted(d for d in dirnames if not is_link_like(base / d))
+        for name in sorted(filenames):
+            p = base / name
+            if is_link_like(p):
+                continue
+            try:
+                st = p.lstat()
+            except OSError:
+                continue
+            if not os.path.isfile(p) or getattr(st, "st_nlink", 1) > 1:
+                continue
             rel = p.relative_to(directory).as_posix()
             if rel.startswith(".git/") or "__pycache__" in rel.split("/"):
                 continue
@@ -234,8 +286,42 @@ def normalize_url(url: str) -> str:
     return urlunparse((scheme, netloc, path, parsed.params, parsed.query, ""))
 
 
-def is_safe_http_url(url: str, *, allow_localhost: bool = False) -> Tuple[bool, str]:
-    """Validate that a URL is HTTP/HTTPS and does not target loopback, link-local, or private IP ranges (SSRF guard)."""
+def _blocked_ip_reason(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> Optional[str]:
+    """Return a reason when an address is not a public unicast destination."""
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
+    if not ip.is_global or ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+        return f"non-public destination address: {ip}"
+    return None
+
+
+def _parse_host_literal(host: str) -> Optional[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    """Parse canonical and legacy IPv4/IPv6 literal forms used to bypass string denylists."""
+    candidate = host.strip().rstrip(".").strip("[]").split("%", 1)[0]
+    try:
+        return ipaddress.ip_address(candidate)
+    except ValueError:
+        pass
+    # inet_aton accepts decimal (2130706433), octal, and shorthand (127.1) IPv4 forms.
+    try:
+        return ipaddress.ip_address(socket.inet_aton(candidate))
+    except OSError:
+        return None
+
+
+def is_safe_http_url(
+    url: str,
+    *,
+    allow_localhost: bool = False,
+    resolve_dns: bool = False,
+) -> Tuple[bool, str]:
+    """Validate an HTTP(S) URL and block loopback, private, link-local, and metadata targets.
+
+    When ``resolve_dns`` is true, every resolved A/AAAA record is checked as well, so a public
+    hostname that resolves to an internal address (e.g. ``localtest.me`` or attacker-controlled
+    DNS) cannot be used for SSRF. Literal IPv4 shorthand/decimal forms are normalized first.
+    """
     try:
         parsed = urlparse(url.strip())
     except ValueError as exc:
@@ -245,14 +331,36 @@ def is_safe_http_url(url: str, *, allow_localhost: bool = False) -> Tuple[bool, 
     hostname = parsed.hostname
     if not hostname:
         return False, "Missing hostname in URL"
-    host_lower = hostname.lower()
-    if not allow_localhost and host_lower in ("localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254", "metadata.google.internal"):
-        return False, f"Blocked loopback or cloud metadata host: {hostname}"
-    try:
-        ip = ipaddress.ip_address(host_lower)
-        if not allow_localhost and (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved):
-            return False, f"Blocked non-public IP address: {ip}"
-    except ValueError:
-        if not allow_localhost and host_lower.endswith((".local", ".internal", ".localhost")):
-            return False, f"Blocked internal domain suffix: {hostname}"
+    host_lower = hostname.lower().rstrip(".")
+    if allow_localhost:
+        return True, "ok"
+
+    literal = _parse_host_literal(host_lower)
+    if literal is not None:
+        reason = _blocked_ip_reason(literal)
+        if reason:
+            return False, f"Blocked {reason}"
+        return True, "ok"
+
+    if host_lower in ("localhost", "metadata.google.internal") or host_lower.endswith(
+        (".local", ".internal", ".localhost")
+    ):
+        return False, f"Blocked internal or metadata host: {hostname}"
+
+    if resolve_dns:
+        try:
+            infos = socket.getaddrinfo(host_lower, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
+        except OSError as exc:
+            return False, f"Could not resolve hostname '{hostname}': {exc}"
+        if not infos:
+            return False, f"Could not resolve hostname '{hostname}'"
+        for info in infos:
+            addr = str(info[4][0]).split("%", 1)[0]
+            try:
+                ip = ipaddress.ip_address(addr)
+            except ValueError:
+                return False, f"Resolved invalid address for '{hostname}': {addr}"
+            reason = _blocked_ip_reason(ip)
+            if reason:
+                return False, f"Blocked {reason} resolved from '{hostname}'"
     return True, "ok"

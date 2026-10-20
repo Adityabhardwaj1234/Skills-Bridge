@@ -24,6 +24,7 @@ from skillbridge.discovery.normalizer import (
     compute_bundle_content_hash,
     compute_directory_content_hash,
     extract_referenced_support_paths,
+    is_link_like,
     parse_skill_md,
     validate_bundle_rel_path,
 )
@@ -437,6 +438,7 @@ class SkillRuntimeLoader:
         approved: bool = False,
     ) -> ActiveBundleEntry:
         """Execute the exact 13-state skill bundle import lifecycle (Section 7)."""
+        limits = self.config.loader_limits
         state_history: List[str] = [
             ImportState.DISCOVERED.value,
             ImportState.PREVIEWED.value,
@@ -487,6 +489,24 @@ class SkillRuntimeLoader:
             )
         state_history.append(ImportState.ARTIFACT_VALIDATED.value)
 
+        # Loader-level payload bounds apply to every import, not just the JIT load path.
+        referenced_entries = [
+            f for f in manifest.files if f.is_referenced and f.relative_path != "SKILL.md"
+        ]
+        if len(referenced_entries) > limits.max_references:
+            shutil.rmtree(Path(manifest.staged_path), ignore_errors=True)
+            raise SkillLoadError(
+                f"Cannot import '{extension_id}': SKILL.md references {len(referenced_entries)} support files, "
+                f"exceeding max_references ({limits.max_references})."
+            )
+        skill_md_entry = next((f for f in manifest.files if f.relative_path == "SKILL.md"), None)
+        if skill_md_entry is not None and skill_md_entry.size_bytes > limits.max_file_size_bytes:
+            shutil.rmtree(Path(manifest.staged_path), ignore_errors=True)
+            raise SkillLoadError(
+                f"Cannot import '{extension_id}': SKILL.md ({skill_md_entry.size_bytes} bytes) exceeds "
+                f"max_file_size_bytes ({limits.max_file_size_bytes})."
+            )
+
         # State 6: TIERED_VERIFICATION (Tiers 1-3)
         state_history.append(ImportState.TIERED_VERIFICATION.value)
         verification = self.coordinator.verify_bundle(manifest, self.settings)
@@ -500,6 +520,28 @@ class SkillRuntimeLoader:
             )
             state_history.append(terminal.value)
             verification.transition_history = list(state_history)
+            quarantine_path = None
+            try:
+                quarantine_path = self.quarantine.quarantine_staged_bundle(
+                    manifest,
+                    verification.to_dict(),
+                    reason=verification.policy_reason,
+                )
+            except Exception:
+                quarantine_path = None
+            self.db.log_audit(
+                "import_skill_rejected",
+                session_id=session_id,
+                provider=manifest.source_provider,
+                extension_id=bundle.extension_id,
+                verdict=verification.assurance_state.value,
+                details={
+                    "bundle_digest": manifest.bundle_digest,
+                    "final_state": terminal.value,
+                    "reason": verification.policy_reason,
+                    "quarantine_path": str(quarantine_path) if quarantine_path else None,
+                },
+            )
             shutil.rmtree(Path(manifest.staged_path), ignore_errors=True)
             with self._lock:
                 self._retained_import_history[bundle.extension_id] = {
@@ -513,6 +555,7 @@ class SkillRuntimeLoader:
                     "final_state": terminal.value,
                     "state_history": state_history,
                     "verification": verification.to_dict(),
+                    "quarantine_path": str(quarantine_path) if quarantine_path else None,
                 }
             if verification.assurance_state == AssuranceState.UNSAFE:
                 raise SkillLoadSecurityError(verification.policy_reason)
@@ -531,10 +574,10 @@ class SkillRuntimeLoader:
             frontmatter, body = parse_skill_md(skill_md_text)
             loaded_refs: Dict[str, str] = {}
             total_bytes = len(skill_md_text.encode("utf-8"))
-            for f_entry in manifest.files:
-                if f_entry.is_referenced and f_entry.relative_path != "SKILL.md" and f_entry.encoding_valid:
+            for f_entry in referenced_entries[: limits.max_references]:
+                if f_entry.encoding_valid:
                     ref_p = active_staged_dir / f_entry.relative_path
-                    if ref_p.exists() and total_bytes + f_entry.size_bytes <= self.config.loader_limits.max_total_bytes:
+                    if ref_p.exists() and total_bytes + f_entry.size_bytes <= limits.max_total_bytes:
                         loaded_refs[f_entry.relative_path] = ref_p.read_text(encoding="utf-8", errors="replace")
                         total_bytes += f_entry.size_bytes
 
@@ -580,6 +623,27 @@ class SkillRuntimeLoader:
                     self._pinned_skills.add(bundle.extension_id)
 
             self.check_and_handle_memory_pressure()
+            if bundle.record is not None:
+                bundle.record.security_verdict = verification.assurance_state.value
+                bundle.record.content_hash = manifest.bundle_digest
+                try:
+                    self.db.upsert_extension(bundle.record)
+                except Exception:
+                    pass
+            self.db.log_audit(
+                "import_skill",
+                session_id=session_id,
+                provider=manifest.source_provider,
+                extension_id=bundle.extension_id,
+                verdict=verification.assurance_state.value,
+                details={
+                    "bundle_digest": manifest.bundle_digest,
+                    "final_state": ImportState.LOADED_INTO_ACTIVE_SESSION.value,
+                    "references_loaded": len(loaded_refs),
+                    "pinned": pin,
+                    "approved": approved,
+                },
+            )
             return entry
         except Exception:
             if active_staged_dir and active_staged_dir.exists():
@@ -786,6 +850,20 @@ class SkillRuntimeLoader:
         if bundle is None or "SKILL.md" not in bundle.files:
             raise self._missing_bundle_error(extension_id)
 
+        def _payload_size(content: str | bytes) -> int:
+            return len(content if isinstance(content, bytes) else content.encode("utf-8"))
+
+        bundle_total_bytes = sum(_payload_size(v) for v in bundle.files.values())
+        if bundle_total_bytes > limits.max_total_bytes:
+            raise SkillLoadError(
+                f"Skill '{bundle.extension_id}' payload is {bundle_total_bytes} bytes, exceeding "
+                f"max_total_bytes ({limits.max_total_bytes})."
+            )
+        if _payload_size(bundle.files["SKILL.md"]) > limits.max_file_size_bytes:
+            raise SkillLoadError(
+                f"SKILL.md in '{bundle.extension_id}' exceeds max_file_size_bytes ({limits.max_file_size_bytes})."
+            )
+
         if bundle.extension_type != ExtensionType.SKILL.value:
             raise SkillLoadError(f"Extension '{extension_id}' is type '{bundle.extension_type}', not a loadable skill.")
 
@@ -868,11 +946,11 @@ class SkillRuntimeLoader:
 
                 if local_root is not None:
                     cand_file = local_root / safe_rel
-                    if cand_file.is_symlink():
+                    if is_link_like(cand_file):
                         target = cand_file.resolve()
                         if not target.is_relative_to(local_root):
                             raise SkillLoadSecurityError(
-                                f"Reference symlink '{safe_rel}' escapes skill root '{local_root}'."
+                                f"Reference symlink/junction '{safe_rel}' escapes skill root '{local_root}'."
                             )
                     if cand_file.exists() and not cand_file.resolve().is_relative_to(local_root):
                         raise SkillLoadSecurityError(

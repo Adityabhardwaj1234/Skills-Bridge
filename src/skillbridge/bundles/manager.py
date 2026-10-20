@@ -11,9 +11,10 @@ import re
 import shutil
 import stat
 from typing import Any
+from urllib.parse import unquote
 import zipfile
 
-from skillbridge.discovery.normalizer import parse_skill_md
+from skillbridge.discovery.normalizer import is_link_like, parse_skill_md, validate_bundle_rel_path
 
 
 class BundleIntegrityError(ValueError):
@@ -314,17 +315,42 @@ class BundleStager:
         source_subpath: str = "",
         resolved_revision: str = "HEAD",
     ) -> BundleManifest:
-        """Materialize an in-memory ExtensionBundle files dict into quarantine staging and run Tier 0 validation."""
+        """Materialize an in-memory ExtensionBundle files dict into quarantine staging and run Tier 0 validation.
+
+        Every key is validated as a bundle-relative path before any write. This rejects Windows
+        drive/UNC paths, traversal, NTFS streams, device names, and case-colliding entries that
+        could otherwise write outside the staging directory or make the archive ambiguous.
+        """
+        safe_files: dict[str, bytes | str] = {}
+        seen: dict[str, str] = {}
+        rejected: list[str] = []
+        for rel_p, content in files_map.items():
+            try:
+                safe_rel = validate_bundle_rel_path(rel_p)
+            except ValueError as exc:
+                rejected.append(f"{rel_p!r}: {exc}")
+                continue
+            key = safe_rel.casefold()
+            if key in seen:
+                rejected.append(f"duplicate/case-colliding bundle path: {seen[key]!r} vs {safe_rel!r}")
+                continue
+            seen[key] = safe_rel
+            safe_files[safe_rel] = content
+        if rejected:
+            raise BundleIntegrityError(
+                "Unsafe in-memory bundle rejected before staging: " + "; ".join(rejected[:8])
+            )
+
         tmp_src = self.quarantine_staging_dir / f"_src_{re.sub(r'[^a-zA-Z0-9_.-]+', '_', skill_id)}"
         if tmp_src.exists():
             shutil.rmtree(tmp_src, ignore_errors=True)
         tmp_src.mkdir(parents=True, exist_ok=True)
         try:
-            for rel_p, content in files_map.items():
-                if ".." in Path(rel_p).parts or rel_p.startswith("/"):
-                    continue
-                dest = tmp_src / rel_p
+            for rel_p, content in safe_files.items():
+                dest = tmp_src.joinpath(*rel_p.split("/"))
                 dest.parent.mkdir(parents=True, exist_ok=True)
+                if not dest.resolve().is_relative_to(tmp_src.resolve()):
+                    raise BundleIntegrityError(f"Bundle path escaped staging root: {rel_p}")
                 if isinstance(content, bytes):
                     dest.write_bytes(content)
                 else:
@@ -352,11 +378,11 @@ class BundleStager:
     ) -> BundleManifest:
         """Create an immutable staged snapshot in quarantine and run Tier 0 intake validation."""
         violations: list[str] = []
+        invalid_paths: set[str] = set()
         if not source_path.exists():
             raise BundleIntegrityError(f"Bundle source path does not exist: {source_path}")
 
         bundle_src = source_path.parent if source_path.is_file() else source_path
-        root_resolved = bundle_src.resolve()
 
         all_entries: list[tuple[Path, str]] = []
         total_bytes = 0
@@ -374,12 +400,8 @@ class BundleStager:
 
             for d in list(dirnames):
                 dp = Path(dirpath) / d
-                if dp.is_symlink():
-                    try:
-                        target = dp.resolve()
-                        target.relative_to(root_resolved)
-                    except Exception:
-                        violations.append(f"Symlinked directory escapes bundle root: {dp.relative_to(bundle_src)}")
+                if is_link_like(dp):
+                    violations.append(f"Symlinked/junction directory rejected by Tier 0 policy: {dp.relative_to(bundle_src)}")
                     dirnames.remove(d)
 
             for fname in sorted(filenames):
@@ -390,13 +412,13 @@ class BundleStager:
                 if ".." in Path(rel_str).parts:
                     violations.append(f"Path traversal segment in bundle path: {rel_str}")
                     continue
-                if fpath.is_symlink():
-                    try:
-                        target = fpath.resolve()
-                        target.relative_to(root_resolved)
-                        violations.append(f"Symlink inside skill bundle rejected by Tier 0 policy: {rel_str}")
-                    except Exception:
-                        violations.append(f"Symlink escapes bundle root: {rel_str}")
+                try:
+                    rel_str = validate_bundle_rel_path(rel_str, max_depth=max(self.max_depth, 1))
+                except ValueError as exc:
+                    violations.append(f"Unsafe bundle path rejected: {rel_str} ({exc})")
+                    continue
+                if is_link_like(fpath):
+                    violations.append(f"Symlink/reparse point inside skill bundle rejected by Tier 0 policy: {rel_str}")
                     continue
                 try:
                     st = fpath.lstat()
@@ -406,10 +428,16 @@ class BundleStager:
                 if not stat.S_ISREG(st.st_mode):
                     violations.append(f"Non-regular file rejected: {rel_str}")
                     continue
+                if getattr(st, "st_nlink", 1) > 1:
+                    violations.append(
+                        f"Hardlinked file rejected by Tier 0 policy (possible out-of-bundle data): {rel_str}"
+                    )
+                    continue
                 if st.st_size > self.max_single_file_bytes:
                     violations.append(
                         f"File {rel_str} size ({st.st_size}B) exceeds single-file limit ({self.max_single_file_bytes}B)"
                     )
+                    invalid_paths.add(rel_str)
                 total_bytes += st.st_size
                 all_entries.append((fpath, rel_str))
 
@@ -436,10 +464,14 @@ class BundleStager:
         staged_dir.mkdir(parents=True, exist_ok=True)
 
         for fpath, rel_str in all_entries:
-            if any(rel_str in v for v in violations):
+            if rel_str in invalid_paths:
                 continue
-            dest = staged_dir / rel_str
+            dest = staged_dir.joinpath(*rel_str.split("/"))
             dest.parent.mkdir(parents=True, exist_ok=True)
+            if not dest.resolve().is_relative_to(staged_dir.resolve()):
+                violations.append(f"Staged path escaped bundle root: {rel_str}")
+                invalid_paths.add(rel_str)
+                continue
             shutil.copy2(fpath, dest)
 
         skill_md_path = staged_dir / "SKILL.md"
@@ -457,12 +489,18 @@ class BundleStager:
                     violations.append(f"Malformed SKILL.md frontmatter: {frontmatter['_invalid_frontmatter']}")
                 for m in _REF_PATTERN.finditer(md_text):
                     ref_candidate = (m.group(1) or m.group(2) or m.group(3) or "").strip()
-                    if ref_candidate and not ref_candidate.startswith(("http://", "https://", "#", "mailto:")):
-                        clean_ref = ref_candidate.split("#")[0].split("?")[0].lstrip("./")
-                        if ".." in Path(clean_ref).parts or clean_ref.startswith("/"):
-                            violations.append(f"SKILL.md references path escaping bundle root: {ref_candidate}")
-                        else:
-                            referenced_paths.add(clean_ref)
+                    if not ref_candidate or ref_candidate.startswith("#"):
+                        continue
+                    if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", ref_candidate):
+                        # Absolute URL or non-file scheme (http:, mailto:, data:, javascript:, ...).
+                        continue
+                    raw_ref = unquote(ref_candidate.split("#")[0].split("?")[0]).strip()
+                    try:
+                        referenced_paths.add(validate_bundle_rel_path(raw_ref))
+                    except ValueError as exc:
+                        violations.append(
+                            f"SKILL.md references unsafe path escaping bundle root: {ref_candidate} ({exc})"
+                        )
         else:
             violations.append("Missing required SKILL.md at bundle root")
 

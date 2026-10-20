@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
+import stat
 from typing import Any, Dict, List, Optional
 
 from skillbridge.config import SkillBridgeConfig
 from skillbridge.discovery.normalizer import (
     compute_directory_content_hash,
+    is_link_like,
     parse_skill_md,
     validate_bundle_rel_path,
 )
@@ -221,26 +224,44 @@ class LocalSkillsProvider(ExtensionProvider):
         skill_dir = Path(rec.source_path)
         if not skill_dir.exists() or not skill_dir.is_dir():
             return None
+        limits = self.config.loader_limits
         files: Dict[str, str | bytes] = {}
-        for f in sorted(skill_dir.rglob("*")):
-            if f.is_symlink() or not f.is_file():
-                continue
-            rel = f.relative_to(skill_dir).as_posix()
-            if rel.startswith(".") or "__pycache__" in rel.split("/") or rel.endswith(".pyc"):
-                continue
-            try:
-                safe_rel = validate_bundle_rel_path(rel)
-            except ValueError:
-                continue
-            try:
-                files[safe_rel] = f.read_text(encoding="utf-8-sig")
-            except UnicodeDecodeError:
+        total_bytes = 0
+        for dirpath, dirnames, filenames in os.walk(skill_dir, followlinks=False):
+            base = Path(dirpath)
+            # Junctions/reparse points are not is_symlink() on Windows and can disclose outside files.
+            dirnames[:] = sorted(d for d in dirnames if not is_link_like(base / d))
+            for name in sorted(filenames):
+                f = base / name
+                if is_link_like(f):
+                    continue
                 try:
-                    files[safe_rel] = f.read_bytes()
+                    st = f.lstat()
                 except OSError:
                     continue
-            except OSError:
-                continue
+                if not stat.S_ISREG(st.st_mode) or getattr(st, "st_nlink", 1) > 1:
+                    continue
+                rel = f.relative_to(skill_dir).as_posix()
+                if rel.startswith(".") or "__pycache__" in rel.split("/") or rel.endswith(".pyc"):
+                    continue
+                if st.st_size > limits.max_file_size_bytes:
+                    continue
+                if total_bytes + st.st_size > limits.max_total_bytes:
+                    break
+                try:
+                    safe_rel = validate_bundle_rel_path(rel)
+                except ValueError:
+                    continue
+                try:
+                    files[safe_rel] = f.read_text(encoding="utf-8-sig")
+                except UnicodeDecodeError:
+                    try:
+                        files[safe_rel] = f.read_bytes()
+                    except OSError:
+                        continue
+                except OSError:
+                    continue
+                total_bytes += st.st_size
         if "SKILL.md" not in files:
             return None
         c_hash = compute_directory_content_hash(skill_dir)
