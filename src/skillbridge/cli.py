@@ -277,6 +277,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"  Assurance State  : {ver['assurance_state']} (Quality Score: {ver['quality_score']:.1f}/100)\n"
                 f"  Closure Digest   : {ver['closure_digest']}\n"
                 f"  Staged Directory : {imp['staged_dir']}\n"
+                f"  Persistence      : catalog + staged bundle persist under --home; the runtime session is process-local\n"
                 f"  Transition Trail : {' -> '.join(imp['state_history'])}"
             )
             _print_output(imp, args.json, text)
@@ -323,6 +324,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"  Content Hash : {handle.content_hash}\n"
                 f"  Total Bytes  : {handle.total_bytes} (~{handle.estimated_tokens} tokens)\n"
                 f"  References   : {', '.join(handle.loaded_references.keys()) or 'none'}\n"
+                f"  Scope        : process-local (this CLI process exits after the command; use 'skillbridge mcp-serve' for persistent sessions)\n"
                 f"  Note         : {handle.context_isolation_note}"
             )
             _print_output(payload, args.json, text)
@@ -344,6 +346,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"  Loaded         : {res['loaded_count']} (workers: {res['workers']})",
                 f"  Failed         : {res['failed_count']}",
                 f"  Elapsed        : {res['elapsed_ms']} ms",
+                f"  Scope          : process-local (use 'skillbridge mcp-serve' for persistent sessions)",
             ]
             for item in res["loaded"]:
                 lines.append(f"  + {item['extension_id']:45s} {item['total_bytes']} bytes, {item['references_loaded']} refs")
@@ -369,6 +372,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"  Bundle Digest    : {imp['bundle_digest']}\n"
                 f"  Assurance State  : {ver['assurance_state']} (Quality Score: {ver['quality_score']:.1f}/100)\n"
                 f"  Staged Directory : {imp['staged_dir']}\n"
+                f"  Persistence      : catalog + staged bundle persist under --home; the runtime session is process-local\n"
                 f"  Transition Trail : {' -> '.join(imp['state_history'])}"
             )
             _print_output(imp, args.json, text)

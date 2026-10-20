@@ -294,6 +294,25 @@ class SkillBridge:
     async def get_skill_status(self, skill_id: Optional[str] = None) -> Dict[str, Any]:
         """Return runtime status for a specific skill (or all active/recalled skills)."""
         if skill_id:
+            found = self.loader.find_active_handle(skill_id)
+            if found is not None:
+                session_id, handle = found
+                return {
+                    "skill_id": handle.extension_id,
+                    "session_id": session_id,
+                    "active": True,
+                    "state": "LOADED_IN_ACTIVE_SESSION",
+                    "handle_id": handle.handle_id,
+                    "content_hash": handle.content_hash,
+                    "bundle_digest": handle.content_hash,
+                    "total_bytes": handle.total_bytes,
+                    "estimated_tokens": handle.estimated_tokens,
+                    "references_loaded": sorted(handle.loaded_references),
+                    "source_provider": handle.source_provider,
+                    "trust_level": handle.trust_level,
+                    "loaded_at": handle.loaded_at,
+                    "dedup_stub": handle.dedup_stub,
+                }
             if skill_id in self.loader._active_bundles:
                 b = self.loader._active_bundles[skill_id]
                 return {

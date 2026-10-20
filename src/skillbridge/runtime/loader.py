@@ -186,6 +186,33 @@ class SkillRuntimeLoader:
             session_map = self._active_sessions.get(session_id, {})
             return [h for h in session_map.values() if h.active]
 
+    def find_active_handle(self, skill_id: str) -> Optional[Tuple[str, RuntimeSkillHandle]]:
+        """Resolve an active handle by exact ID, qualified ID, or skill name.
+
+        Returns ``(session_id, handle)`` for the first match, or ``None`` when the skill is
+        not currently loaded in any session. Keep this in sync with the session summary so
+        status queries never report a loaded skill as inactive.
+        """
+        target = (skill_id or "").strip().lower().rstrip("/")
+        if not target:
+            return None
+        bare = target.rsplit("/", 1)[-1]
+        with self._lock:
+            for session_id, handles in self._active_sessions.items():
+                for ext_id, handle in handles.items():
+                    if not handle.active:
+                        continue
+                    candidates = {
+                        ext_id.lower().rstrip("/"),
+                        handle.extension_id.lower().rstrip("/"),
+                        handle.name.lower().rstrip("/"),
+                    }
+                    if target in candidates:
+                        return session_id, handle
+                    if any(c.rsplit("/", 1)[-1] == bare for c in candidates):
+                        return session_id, handle
+        return None
+
     def active_skill_count(self) -> int:
         """Return total number of simultaneously active skills across sessions and bundle registry."""
         with self._lock:
@@ -960,6 +987,28 @@ class SkillRuntimeLoader:
             )
         return handle
 
+    def _nearby_skill_hints(self, extension_id: str, limit: int = 3) -> List[str]:
+        """Return a few catalog IDs close to a failed lookup, for actionable error messages."""
+        segment = extension_id.strip().rstrip("/").rsplit("/", 1)[-1].strip()
+        query = re.sub(r"[^A-Za-z0-9]+", " ", segment).strip()
+        if not query or len(query) < 3:
+            return []
+        try:
+            hits = self.db.search_extensions(query, limit=10)
+        except Exception:
+            return []
+        token = segment.lower().replace("-", "").replace("_", "")
+        hints: List[str] = []
+        for rec in hits:
+            flat_id = rec.extension_id.lower().replace("-", "").replace("_", "")
+            flat_name = rec.name.lower().replace("-", "").replace("_", "")
+            if token and (token in flat_id or token == flat_name or token in flat_name):
+                if rec.extension_id != extension_id:
+                    hints.append(rec.extension_id)
+            if len(hints) >= limit:
+                break
+        return hints
+
     def _missing_bundle_error(self, extension_id: str) -> SkillLoadError:
         """Build a precise error explaining why a bundle could not be materialized for loading."""
         rec = None
@@ -968,7 +1017,13 @@ class SkillRuntimeLoader:
         except Exception:
             rec = None
         if rec is None:
-            return SkillLoadError(f"Extension '{extension_id}' could not be found or has no SKILL.md bundle.")
+            hints = self._nearby_skill_hints(extension_id)
+            hint_text = f" Closest catalog matches: {', '.join(hints)}." if hints else ""
+            return SkillLoadError(
+                f"Extension '{extension_id}' could not be found or has no SKILL.md bundle.{hint_text} "
+                "Run 'search-skills <keywords>' to discover catalog IDs; imported local folders use the "
+                "'local-custom/<directory-name>' ID format."
+            )
         network_only_providers = {
             "github", "skills.sh", "clawhub", "browse-sh", "lobehub", "hermes-index", "mcp-registry", "smithery",
         }

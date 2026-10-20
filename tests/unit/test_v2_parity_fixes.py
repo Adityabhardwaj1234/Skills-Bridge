@@ -160,6 +160,37 @@ class TestParallelLoadingAndHelpers(unittest.TestCase):
         self.assertEqual(len(batch_audits), 1)
         self.assertEqual(batch_audits[0]["details"]["loaded_count"], 3)
 
+    def test_status_reports_active_handle_and_accepts_bare_name(self) -> None:
+        _write_skill(
+            self.skills_root,
+            "status-skill",
+            "Use [guide](references/guide.md) when reporting status.",
+            files={"references/guide.md": "# Guide\n"},
+        )
+        bridge = self._bridge()
+
+        async def _run():
+            imp = await bridge.import_local_directory(
+                str(self.skills_root / "status-skill"), session_id="status-session"
+            )
+            status = await bridge.get_skill_status("status-skill")
+            self.assertTrue(status["active"], status)
+            self.assertEqual(status["session_id"], "status-session")
+            self.assertIn("references/guide.md", status["references_loaded"])
+
+            unloaded = await bridge.unload_skill(imp["skill_id"], session_id="status-session")
+            self.assertTrue(unloaded.get("unloaded"), unloaded)
+            after = await bridge.get_skill_status(imp["skill_id"])
+            self.assertFalse(after["active"])
+
+            with self.assertRaises(SkillLoadError) as ctx:
+                await bridge.load_skill("status-skil", session_id="status-session-2")
+            message = str(ctx.exception)
+            self.assertIn("search-skills", message)
+            self.assertIn("local-custom/<directory-name>", message)
+
+        asyncio.run(_run())
+
     def test_index_only_record_reports_actionable_offline_error(self) -> None:
         bridge = self._bridge()
         record = ExtensionRecord(
@@ -331,6 +362,77 @@ class TestSeedingAuditAndClawHub(unittest.TestCase):
         self.assertEqual(rec.extra_metadata["install_reference"], "acme/pdf-helper")
         self.assertEqual(rec.canonical_uri, "https://clawhub.ai/skills/acme/pdf-helper")
         self.assertTrue(fake.url.endswith("/search"))
+
+    def test_skills_sh_search_uses_canonical_source_and_skill_id(self) -> None:
+        provider = HermesHubProvider()
+
+        class FakeHttp:
+            def get_json(self, url, params=None):
+                return {
+                    "skills": [
+                        {
+                            "id": "anthropics/skills/pdf",
+                            "source": "anthropics/skills",
+                            "skillId": "pdf",
+                            "name": "pdf",
+                            "installs": 213231,
+                        }
+                    ]
+                }
+
+        provider.http = FakeHttp()  # type: ignore[assignment]
+        recs = provider.search_skills_sh("pdf", limit=5)
+        self.assertEqual(len(recs), 1)
+        self.assertEqual(recs[0].extension_id, "skills.sh/anthropics/skills/pdf")
+        self.assertEqual(recs[0].repo, "anthropics/skills")
+        self.assertEqual(recs[0].source_path, "pdf")
+        self.assertEqual(recs[0].source_provider, "skills.sh")
+
+    def test_github_fetch_resolves_nested_skill_directory(self) -> None:
+        from skillbridge.providers.remote import GitHubSkillsProvider
+
+        provider = GitHubSkillsProvider()
+        tree = {
+            "sha": "rev1",
+            "tree": [
+                {"path": "skills/pdf/SKILL.md", "type": "blob", "mode": "100644"},
+                {"path": "skills/pdf/reference.md", "type": "blob", "mode": "100644"},
+                {"path": "skills/other/SKILL.md", "type": "blob", "mode": "100644"},
+            ],
+        }
+
+        class FakeHttp:
+            def get_json(self, url, params=None):
+                if "/git/trees/" in url:
+                    return tree
+                return {"default_branch": "main"}
+
+            def get_text(self, url, params=None, headers=None):
+                if url.endswith("skills/pdf/SKILL.md"):
+                    return (
+                        "---\nname: pdf\ndescription: Nested pdf skill\n---\n"
+                        "# PDF\nUse [reference.md](reference.md).\n"
+                    )
+                if url.endswith("skills/pdf/reference.md"):
+                    return "# Reference\n"
+                return None
+
+        provider.http = FakeHttp()  # type: ignore[assignment]
+        bundle = provider.fetch_bundle("anthropics/skills/pdf")
+        self.assertIsNotNone(bundle)
+        assert bundle is not None
+        self.assertEqual(bundle.name, "pdf")
+        self.assertIn("SKILL.md", bundle.files)
+        self.assertIn("reference.md", bundle.files)
+        self.assertIn("skills/pdf", bundle.metadata["source_url"])
+
+    def test_mcp_registry_inspect_does_not_fuzzy_match_unknown_ids(self) -> None:
+        from skillbridge.providers.remote import MCPRegistryProvider
+
+        cfg = SkillBridgeConfig(home_dir=self.tmp_dir / ".sb", project_root=self.tmp_dir)
+        cfg.network.offline_mode = True
+        provider = MCPRegistryProvider(cfg)
+        self.assertIsNone(provider.inspect("totally-missing/ext-id"))
 
 
 class TestWholeDirectoryImport(unittest.TestCase):

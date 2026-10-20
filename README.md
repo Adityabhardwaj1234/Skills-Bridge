@@ -80,8 +80,10 @@ skillbridge search-skills "pdf tables extraction" --limit 10
 skillbridge search-mcp "playwright"
 ```
 
-The first search seeds the local SQLite catalog from the bundled Hermes index (100k+ records across index
-caches) plus your local OpenCode / Claude Code / Hermes skill directories.
+On first run, SkillBridge seeds the SQLite catalog with 100k+ records from the bundled index caches, your
+local OpenCode / Claude Code / Hermes skill directories, and — when online — the live Hermes index (cached
+under `~/.skillbridge/index-cache/hermes-index.json` for subsequent runs). Add `--offline` to use only local
+and bundled data.
 
 ### 2. Preview and compare before loading
 
@@ -93,7 +95,7 @@ skillbridge preflight "build a financial model with formulas" --source all
 ### 3. Import an entire local skill directory
 
 ```bash
-skillbridge import-dir ./examples/my-skill --approve
+skillbridge import-dir ./examples/skills/safe-code-helper --approve
 ```
 
 `import-dir` stages **all** files in the directory (scripts, references, templates, assets, tests), hashes
@@ -106,7 +108,26 @@ You can also import by catalog ID:
 skillbridge import <skill-id> --approve
 ```
 
-### 4. Load one or many skills
+#### Skill bundle format
+
+A skill is a directory whose root contains `SKILL.md`:
+
+```text
+my-skill/
+├── SKILL.md
+├── references/
+│   └── guide.md
+└── scripts/
+    └── task.py
+```
+
+`SKILL.md` starts with YAML frontmatter (`name`, `description`, optional `tags`) followed by Markdown.
+Reference files are attached on load when `SKILL.md` links them with normal Markdown links, for example
+`[guide](references/guide.md)` or `[task](scripts/task.py)`; backticked paths are not followed. `import-dir`
+stages every file in the directory, while `load-skill` attaches the linked references (and local helper
+modules imported by linked scripts) up to the configured limits.
+
+### 4. Load one or many skills (process-local)
 
 ```bash
 skillbridge load-skill <skill-id> --session-id demo
@@ -115,8 +136,12 @@ skillbridge load-skill <skill-id> --session-id demo
 skillbridge load-batch <skill-id-1> <skill-id-2> <skill-id-3> --workers 8 --approve
 ```
 
-Each session is isolated. Use `skillbridge status`, `skillbridge memory`, and
-`skillbridge unload-skill <id> --session-id demo` to inspect and release runtime state.
+Runtime handles live in the memory of the process running the command: `load-skill` and `load-batch` exit
+after printing their result, so a `status` or `unload-skill` in a **separate** shell command will not see
+those handles. Catalog records, staged bundles, verification results, and audit logs persist under
+`--home`. For persistent runtime sessions use the MCP broker (`skillbridge mcp-serve`) or the Python API
+(`SkillBridge.load_skill()`), where `status <skill-id>` reports the active handle and `unload-skill`
+releases it.
 
 ### 5. Generate the product console
 
@@ -246,6 +271,17 @@ State lives in `~/.skillbridge` by default (override with `--home`):
 ├── index-cache/        # fetched provider indexes
 └── settings.json       # runtime settings overrides
 ```
+
+Global flags (`--offline`, `--json`, `--home <dir>`) must be placed **before** the subcommand:
+
+```bash
+skillbridge --offline --home ./sandbox search-skills "pdf"
+skillbridge --json memory
+```
+
+Runtime bundles are staged under the system temp directory in a per-home subdirectory
+(`%TEMP%/skillbridge_runtime_<user>/<home>-<hash>` on Windows, `/tmp/...` on POSIX). They are removed when a
+skill or session is unloaded; the persistent tree above is never used for transient staging.
 
 ### Loader limits (`LoaderLimits`)
 
