@@ -451,6 +451,7 @@ class HermesHubProvider(ExtensionProvider):
         """Safely extract an in-memory ClawHub ZIP bundle, blocking path traversal and symlinks."""
         safe_slug = validate_skill_name(slug.split("/")[-1])
         files: Dict[str, str | bytes] = {}
+        seen_paths: set[str] = set()
         total_uncompressed = 0
         max_archive_bytes = self.config.loader_limits.max_total_bytes
         try:
@@ -464,6 +465,11 @@ class HermesHubProvider(ExtensionProvider):
                         logger.warning("Rejected symlink inside ClawHub archive: %s", info.filename)
                         return None
                     safe_rel = validate_bundle_rel_path(info.filename)
+                    path_key = safe_rel.casefold()
+                    if path_key in seen_paths:
+                        logger.warning("Rejected duplicate/case-colliding path in ClawHub archive: %s", info.filename)
+                        return None
+                    seen_paths.add(path_key)
                     if info.file_size > self.config.loader_limits.max_file_size_bytes * 4:
                         logger.warning("Rejected oversized file in ClawHub archive: %s (%d bytes)", safe_rel, info.file_size)
                         return None

@@ -302,8 +302,33 @@ class BundleStager:
         self.max_total_bytes = max_total_bytes
         self.max_single_file_bytes = max_single_file_bytes
         self.max_depth = max_depth
-        self.quarantine_staging_dir.mkdir(parents=True, exist_ok=True)
-        self.active_staging_dir.mkdir(parents=True, exist_ok=True)
+        for directory in (self.quarantine_staging_dir, self.active_staging_dir):
+            if is_link_like(directory):
+                raise BundleIntegrityError(f"Staging directory '{directory}' is a symlink/junction; refusing to use it.")
+            directory.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def _remove_staging_path(path: Path) -> None:
+        """Remove a staging path without following a planted symlink/junction."""
+        if not path.exists() and not is_link_like(path):
+            return
+        if is_link_like(path):
+            try:
+                path.unlink()
+                return
+            except OSError:
+                try:
+                    path.rmdir()
+                    return
+                except OSError:
+                    pass
+        try:
+            if path.is_file():
+                path.unlink()
+                return
+        except OSError:
+            pass
+        shutil.rmtree(path, ignore_errors=True)
 
     def stage_from_files_map(
         self,
@@ -342,8 +367,9 @@ class BundleStager:
             )
 
         tmp_src = self.quarantine_staging_dir / f"_src_{re.sub(r'[^a-zA-Z0-9_.-]+', '_', skill_id)}"
-        if tmp_src.exists():
-            shutil.rmtree(tmp_src, ignore_errors=True)
+        self._remove_staging_path(tmp_src)
+        if is_link_like(self.quarantine_staging_dir):
+            raise BundleIntegrityError("Quarantine staging root is a link/reparse point; refusing to write")
         tmp_src.mkdir(parents=True, exist_ok=True)
         try:
             for rel_p, content in safe_files.items():
@@ -364,7 +390,7 @@ class BundleStager:
                 resolved_revision=resolved_revision,
             )
         finally:
-            shutil.rmtree(tmp_src, ignore_errors=True)
+            self._remove_staging_path(tmp_src)
 
     def stage_into_quarantine(
         self,
@@ -383,6 +409,8 @@ class BundleStager:
             raise BundleIntegrityError(f"Bundle source path does not exist: {source_path}")
 
         bundle_src = source_path.parent if source_path.is_file() else source_path
+        if is_link_like(source_path) or is_link_like(bundle_src):
+            raise BundleIntegrityError("Bundle source root is a symlink/junction; refusing to follow it.")
 
         all_entries: list[tuple[Path, str]] = []
         total_bytes = 0
@@ -459,8 +487,7 @@ class BundleStager:
 
         digest_slug = bundle_digest.replace(":", "_")
         staged_dir = self.quarantine_staging_dir / digest_slug
-        if staged_dir.exists():
-            shutil.rmtree(staged_dir, ignore_errors=True)
+        self._remove_staging_path(staged_dir)
         staged_dir.mkdir(parents=True, exist_ok=True)
 
         for fpath, rel_str in all_entries:
@@ -656,22 +683,31 @@ class BundleStager:
         safe_skill = re.sub(r"[^a-zA-Z0-9_.-]+", "_", manifest.skill_id)
         safe_session = re.sub(r"[^a-zA-Z0-9_.-]+", "_", session_id)
         dest = self.active_staging_dir / safe_session / safe_skill
-        if dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
+        if is_link_like(dest.parent) or is_link_like(self.active_staging_dir):
+            raise BundleIntegrityError("Active staging path contains a link/reparse point; refusing to write")
+        self._remove_staging_path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(src, dest)
         return dest
 
     def recompute_staged_digest(self, staged_dir: Path) -> str:
         """Recompute the Tier 0 bundle digest of a staged directory (excluding .skillbridge_bundle_manifest.json)."""
+        if is_link_like(staged_dir):
+            raise BundleIntegrityError(f"Staged bundle root is a link/reparse point: {staged_dir}")
         hasher = hashlib.sha256()
         entries: list[tuple[Path, str]] = []
         for dirpath, dirnames, filenames in os.walk(staged_dir, followlinks=False):
-            dirnames[:] = [d for d in sorted(dirnames) if d not in ("__pycache__", ".git", ".pytest_cache")]
+            base = Path(dirpath)
+            dirnames[:] = [
+                d for d in sorted(dirnames)
+                if d not in ("__pycache__", ".git", ".pytest_cache") and not is_link_like(base / d)
+            ]
             for fname in sorted(filenames):
                 if fname == ".skillbridge_bundle_manifest.json":
                     continue
-                fpath = Path(dirpath) / fname
+                fpath = base / fname
+                if is_link_like(fpath):
+                    raise BundleIntegrityError(f"Staged bundle contains a link/reparse point: {fpath}")
                 rel_str = fpath.relative_to(staged_dir).as_posix()
                 entries.append((fpath, rel_str))
         for fpath, rel_str in sorted(entries, key=lambda x: x[1]):

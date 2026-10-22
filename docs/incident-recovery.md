@@ -4,8 +4,13 @@
 
 When an extension fails Tier 0–3 security verification (`AssuranceState.UNSAFE` or `SecurityVerdict.DANGEROUS`):
 1. The active import or installation is aborted immediately before any native client files are modified.
-2. A forensic snapshot and `quarantine_metadata.json` are written to `~/.skillbridge/quarantine/<name>-<hash>/`.
-3. Any temporary staging files in `quarantine_staging/` or `active_staging/` are deleted.
+2. A forensic bundle snapshot and `verification.json` report are written to
+   `<home>/quarantine/<name>-<hash>/` (`~/.skillbridge` by default).
+3. Temporary `quarantine_staging/` or `active_staging/` directories for that attempt are deleted; accepted
+   bundle staging is also removed on unload and abandoned staging older than 24 hours is garbage-collected.
+
+If the catalog database itself is malformed, the next start moves it to `skillbridge.db.corrupt-<timestamp>`
+and creates a fresh catalog. Preserve that file for forensics before deleting it.
 
 ## 2. Rolling Back Native Client Deployments
 

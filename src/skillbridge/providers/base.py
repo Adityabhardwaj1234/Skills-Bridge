@@ -59,7 +59,9 @@ class GuardedHttpClient:
                 with self._make_client() as client:
                     for _hop in range(self.config.max_redirects + 1):
                         safe, reason = is_safe_http_url(
-                            current_url, allow_localhost=allow_localhost, resolve_dns=True
+                            current_url,
+                            allow_localhost=allow_localhost,
+                            resolve_dns=(self._transport is None),
                         )
                         if not safe:
                             logger.warning("Blocked unsafe URL %s: %s", current_url, reason)

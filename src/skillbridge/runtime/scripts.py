@@ -27,7 +27,7 @@ class ScriptExecutionBlockedError(PermissionError):
 
 @dataclass
 class ScriptExecutionResult:
-    """Structured result from an isolated skill script invocation."""
+    """Structured result from an approval-gated skill script invocation."""
 
     skill_id: str
     script_relative_path: str
@@ -214,23 +214,69 @@ class ScriptExecutionManager:
                     stderr=subprocess.PIPE,
                     start_new_session=(os.name != "nt"),
                 )
+                output_cap = max(1, int(self.settings.script_max_output_bytes))
+                out_buf: bytearray = bytearray()
+                err_buf: bytearray = bytearray()
+                truncated = {"stdout": False, "stderr": False}
+
+                def _drain(stream: Any, key: str) -> None:
+                    buf = out_buf if key == "stdout" else err_buf
+                    while True:
+                        chunk = stream.read(65536)
+                        if not chunk:
+                            break
+                        room = output_cap - len(buf)
+                        if room > 0:
+                            buf.extend(chunk[:room])
+                        if len(chunk) > max(room, 0):
+                            truncated[key] = True
+
+                reader_out = threading.Thread(target=_drain, args=(proc.stdout, "stdout"), daemon=True)
+                reader_err = threading.Thread(target=_drain, args=(proc.stderr, "stderr"), daemon=True)
+                reader_out.start()
+                reader_err.start()
                 try:
-                    raw_out, raw_err = proc.communicate(timeout=self.settings.script_timeout_seconds)
+                    proc.wait(timeout=self.settings.script_timeout_seconds)
                     exit_code = int(proc.returncode or 0)
                 except subprocess.TimeoutExpired:
                     timed_out = True
                     self._terminate_process_group(proc)
-                    raw_out, raw_err = proc.communicate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
                     exit_code = 124
+                # The parent may have exited while a grandchild still holds the pipe open.
+                reader_out.join(timeout=5)
+                reader_err.join(timeout=5)
+                if reader_out.is_alive() or reader_err.is_alive():
+                    for stream in (proc.stdout, proc.stderr):
+                        try:
+                            if stream is not None:
+                                stream.close()
+                        except OSError:
+                            pass
+                    reader_out.join(timeout=1)
+                    reader_err.join(timeout=1)
+                raw_out, raw_err = bytes(out_buf), bytes(err_buf)
+                for stream in (proc.stdout, proc.stderr):
+                    try:
+                        if stream is not None:
+                            stream.close()
+                    except OSError:
+                        pass
             finally:
                 self._active_workers = max(0, self._active_workers - 1)
 
             elapsed_ms = round((time.monotonic() - t0) * 1000.0, 2)
-            max_b = self.settings.script_max_output_bytes
-            stdout_str = redact_secrets((raw_out or b"")[:max_b].decode("utf-8", errors="replace"))
-            stderr_str = redact_secrets((raw_err or b"")[:max_b].decode("utf-8", errors="replace"))
+            stdout_str = redact_secrets(raw_out.decode("utf-8", errors="replace"))
+            stderr_str = redact_secrets(raw_err.decode("utf-8", errors="replace"))
             if timed_out:
                 stderr_str = f"{stderr_str}\n[SkillBridge: Script execution timed out after {self.settings.script_timeout_seconds}s]".strip()
+            if truncated["stdout"] or truncated["stderr"]:
+                stderr_str = (
+                    f"{stderr_str}\n[SkillBridge: Script output truncated at {self.settings.script_max_output_bytes} bytes]"
+                ).strip()
 
             return ScriptExecutionResult(
                 skill_id=manifest.skill_id,
@@ -245,6 +291,7 @@ class ScriptExecutionManager:
                 isolation_backend="restricted-subprocess-no-secrets-socket-guard",
                 working_directory=str(staged_bundle_dir),
                 approved=True,
+                output_truncated=bool(truncated["stdout"] or truncated["stderr"]),
             )
         finally:
             shutil.rmtree(work_tmp, ignore_errors=True)
@@ -288,11 +335,23 @@ class ScriptExecutionManager:
 
     @staticmethod
     def _terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
+        """Kill the process and all descendants, including on Windows.
+
+        ``Popen.kill()`` only terminates the direct child on Windows; a malicious script could
+        otherwise leave a network-connected grandchild running after timeout.
+        """
         try:
             if os.name != "nt":
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             else:
-                proc.kill()
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    capture_output=True,
+                    timeout=10,
+                    check=False,
+                )
+                if proc.poll() is None:
+                    proc.kill()
         except Exception:
             try:
                 proc.kill()

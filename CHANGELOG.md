@@ -2,6 +2,25 @@
 
 All notable changes to **SkillBridge** are documented in this file.
 
+## [2.0.1] - 2026-10-22
+
+Security patch release based on an independent hostile red-team evaluation.
+
+### Fixed
+- **Scanner authorization failures**: AST findings now feed the verdict; added multi-line rules for Python socket→shell reverse shells, decoded `exec`, `powershell -EncodedCommand`/`FromBase64String`, keyboard-hook/keylogger APIs, `os.system`, dynamic `eval`/`exec`, and `subprocess(..., shell=True)`. Previously these could be rated SAFE and imported.
+- **Filesystem containment**: Tier 0 now rejects NTFS junctions and hardlinks in addition to symlinks; every staged path is resolved and asserted inside the bundle root. In-memory bundle maps validate every key and reject Windows drive/UNC paths, traversal, device names, control characters, and case-colliding duplicates before writing.
+- **SKILL.md traversal at import**: reference links are percent-decoded and validated component-by-component. `../` links now fail Tier 0 instead of being silently normalized; the 100-reference cap is enforced on import as well as load.
+- **Cross-session unload**: `unload_skill` honors the requested `session_id`. One MCP client can no longer terminate another session's handle; staging is released only after the last session releases the skill.
+- **Script runner resource bounds**: stdout/stderr are drained into fixed-size buffers instead of unbounded `communicate()` buffering; overflowing output is marked truncated. Timeouts terminate the full Windows process tree via `taskkill /T`.
+- **SSRF guard**: decimal/octal/shorthand IPv4, IPv4-mapped IPv6, and NAT64 literals are normalized; every resolved A/AAAA is checked and non-public destinations are rejected. Environment proxies are ignored, and redirects are revalidated.
+- **Corrupt storage recovery**: malformed SQLite catalogs are moved to `skillbridge.db.corrupt-<timestamp>` and rebuilt; `--home` paths that are regular files produce actionable errors. CLI startup errors no longer dump raw tracebacks (set `SKILLBRIDGE_DEBUG=1` to re-enable them).
+- **Quarantine and audit lifecycle**: blocked imports now persist a `verification.json` plus file snapshot under `<home>/quarantine`; accepted/rejected imports write audit rows with digest and verdict. Catalog `security_verdict` is synchronized after successful import.
+- **Archive ambiguity**: ClawHub ZIPs with duplicate or case-colliding member names are rejected.
+- **UX/docs**: `--version`, `--source local` alias, 10k-character identifier echo reduced, `reports/` ignored, and README claims corrected for staging, quarantine, script isolation, and limits.
+
+### Tests
+- Added `tests/security/test_redteam_hardening.py` (16 regressions covering RCE verdicts, reverse-shell import blocking, junction/hardlink/root-link escapes, drive-absolute writes, cross-session unload, script output caps, SSRF aliases, corrupt DB recovery, quarantine, import audit, reference caps, and identifier echo bounds).
+
 ## [2.0.0] - 2026-10-19
 
 ### Added

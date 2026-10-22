@@ -150,11 +150,17 @@ class SkillRuntimeLoader:
             / f"skillbridge_runtime_{uid_tag}"
             / f"{self.config.home_dir.name}-{home_tag}"
         )
+        if is_link_like(staging_root) or is_link_like(staging_root.parent):
+            raise RuntimeError(
+                f"Runtime staging path '{staging_root}' is a symlink/junction; refusing to write through it. "
+                "Remove the link and retry."
+            )
         staging_root.mkdir(parents=True, exist_ok=True)
         try:
             os.chmod(staging_root, 0o700)
         except OSError:
             pass
+        self._cleanup_stale_staging(staging_root)
         self.bundle_stager = BundleStager(
             quarantine_staging_dir=staging_root / "quarantine_staging",
             active_staging_dir=staging_root / "active_staging",
@@ -180,6 +186,27 @@ class SkillRuntimeLoader:
         self._in_use_skills: set[str] = set()
         self._retained_import_history: Dict[str, Dict[str, Any]] = {}
         self._eviction_events: List[Dict[str, Any]] = []
+
+    @staticmethod
+    def _cleanup_stale_staging(staging_root: Path, max_age_seconds: int = 24 * 3600) -> None:
+        """Best-effort GC for abandoned process-local staging directories."""
+        now = time.time()
+        for parent_name in ("active_staging", "quarantine_staging"):
+            parent = staging_root / parent_name
+            if not parent.is_dir() or is_link_like(parent):
+                continue
+            try:
+                children = list(parent.iterdir())
+            except OSError:
+                continue
+            for child in children:
+                try:
+                    if is_link_like(child) or not child.is_dir():
+                        continue
+                    if now - child.stat().st_mtime > max_age_seconds:
+                        shutil.rmtree(child, ignore_errors=True)
+                except OSError:
+                    continue
 
     def get_active_handles(self, session_id: str) -> List[RuntimeSkillHandle]:
         """Return currently active RuntimeSkillHandles for a specific isolated session."""
@@ -301,6 +328,27 @@ class SkillRuntimeLoader:
                 if k.lower() == low or entry.manifest.name.lower() == low or k.lower().endswith(f"/{low}"):
                     return k
             return None
+
+    def resolve_active_bundle_id(self, skill_id: str) -> Optional[str]:
+        """Public, read-only resolution of an imported bundle identifier."""
+        return self._resolve_active_bundle_key(skill_id)
+
+    def session_holds_skill(self, skill_id: str, *, exclude_session: Optional[str] = None) -> bool:
+        """Return True when any live session (optionally excluding one) still holds this skill."""
+        resolved = self._resolve_active_bundle_key(skill_id) or skill_id
+        low = resolved.strip().lower()
+        with self._lock:
+            for sid, handles in self._active_sessions.items():
+                if exclude_session is not None and sid == exclude_session:
+                    continue
+                for key, handle in handles.items():
+                    if getattr(handle, "active", False) and (
+                        key.lower() == low
+                        or getattr(handle, "extension_id", "").lower() == low
+                        or getattr(handle, "name", "").lower() == low.split("/")[-1]
+                    ):
+                        return True
+        return False
 
     def pin_skill(self, extension_id: str, pinned: bool = True) -> bool:
         with self._lock:
@@ -1087,8 +1135,15 @@ class SkillRuntimeLoader:
                 break
         return hints
 
+    @staticmethod
+    def _display_identifier(value: str, limit: int = 120) -> str:
+        """Keep user-controlled IDs from flooding logs/CLI output with huge echoes."""
+        text = str(value)
+        return text if len(text) <= limit else f"{text[: limit - 3]}..."
+
     def _missing_bundle_error(self, extension_id: str) -> SkillLoadError:
         """Build a precise error explaining why a bundle could not be materialized for loading."""
+        display_id = self._display_identifier(extension_id)
         rec = None
         try:
             rec = self.discovery.resolve_extension(extension_id)
@@ -1098,7 +1153,7 @@ class SkillRuntimeLoader:
             hints = self._nearby_skill_hints(extension_id)
             hint_text = f" Closest catalog matches: {', '.join(hints)}." if hints else ""
             return SkillLoadError(
-                f"Extension '{extension_id}' could not be found or has no SKILL.md bundle.{hint_text} "
+                f"Extension '{display_id}' could not be found or has no SKILL.md bundle.{hint_text} "
                 "Run 'search-skills <keywords>' to discover catalog IDs; imported local folders use the "
                 "'local-custom/<directory-name>' ID format."
             )
@@ -1108,17 +1163,17 @@ class SkillRuntimeLoader:
         if rec.source_provider in network_only_providers:
             if self.config.network.offline_mode:
                 return SkillLoadError(
-                    f"Extension '{extension_id}' is a remote '{rec.source_provider}' index record with no locally "
+                    f"Extension '{display_id}' is a remote '{rec.source_provider}' index record with no locally "
                     f"cached bundle. It requires a live fetch ({rec.canonical_uri or 'upstream provider'}); offline "
                     "mode is enabled — rerun without --offline or pre-seed a cached index/bundle."
                 )
             return SkillLoadError(
-                f"Extension '{extension_id}' is a remote '{rec.source_provider}' index record and its bundle could "
+                f"Extension '{display_id}' is a remote '{rec.source_provider}' index record and its bundle could "
                 f"not be fetched ({rec.canonical_uri or 'upstream provider'}). The record may be stale or the "
                 "provider unreachable; try search-skills to refresh the catalog."
             )
         return SkillLoadError(
-            f"Extension '{extension_id}' resolved to '{rec.source_provider}' but has no SKILL.md bundle "
+            f"Extension '{display_id}' resolved to '{rec.source_provider}' but has no SKILL.md bundle "
             f"(canonical: {rec.canonical_uri or 'n/a'})."
         )
 

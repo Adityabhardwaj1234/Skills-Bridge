@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.request import pathname2url
@@ -22,11 +24,37 @@ from skillbridge.models import (
 )
 
 SCHEMA_VERSION = 2
+logger = logging.getLogger(__name__)
+
+
+def _retire_corrupt_database(db_path: Path) -> Path:
+    """Move an unreadable SQLite database (and WAL sidecars) aside, preserving evidence."""
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup = db_path.with_name(f"{db_path.name}.corrupt-{stamp}")
+    for candidate in (db_path, Path(str(db_path) + "-wal"), Path(str(db_path) + "-shm")):
+        if not candidate.exists():
+            continue
+        target = backup if candidate == db_path else backup.with_name(backup.name + candidate.suffix)
+        try:
+            candidate.replace(target)
+        except OSError as exc:
+            raise RuntimeError(
+                f"Catalog database at '{db_path}' is corrupt/unreadable and could not be moved aside: {exc}. "
+                "Close other SkillBridge processes, move the file manually, and retry."
+            ) from exc
+    logger.error("Corrupt catalog database moved to %s; a fresh catalog will be created.", backup)
+    return backup
 
 
 def _open_sqlite_resilient(db_path: Path) -> sqlite3.Connection:
-    """Open SQLite connection resiliently across local disks, Windows, and 9p/NFS sandbox filesystems."""
+    """Open SQLite connection resiliently across local disks, Windows, and 9p/NFS sandbox filesystems.
+
+    A malformed database is retired to ``skillbridge.db.corrupt-<timestamp>`` and rebuilt instead
+    of surfacing a raw sqlite traceback to the user.
+    """
     db_path.parent.mkdir(parents=True, exist_ok=True)
+    if db_path.exists() and db_path.is_dir():
+        raise RuntimeError(f"Catalog path '{db_path}' is a directory, not a SQLite database file.")
     if os.name != "nt":
         try:
             os.chmod(db_path.parent, 0o755)
@@ -37,12 +65,26 @@ def _open_sqlite_resilient(db_path: Path) -> sqlite3.Connection:
             db_path.unlink()
         except OSError:
             pass
-    conn = sqlite3.connect(str(db_path), timeout=15.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=OFF")
-    conn.execute("PRAGMA synchronous=OFF")
-    conn.execute("PRAGMA temp_store=MEMORY")
-    return conn
+
+    last_error: Optional[sqlite3.DatabaseError] = None
+    for attempt in range(2):
+        conn = sqlite3.connect(str(db_path), timeout=15.0, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("PRAGMA journal_mode=OFF")
+            conn.execute("PRAGMA synchronous=OFF")
+            conn.execute("PRAGMA temp_store=MEMORY")
+            # Force a page read so "file is not a database" is detected here, not later in the CLI.
+            conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
+            return conn
+        except sqlite3.DatabaseError as exc:
+            last_error = exc
+            conn.close()
+            if attempt == 0:
+                _retire_corrupt_database(db_path)
+                continue
+            break
+    raise RuntimeError(f"Could not open a valid catalog database at '{db_path}': {last_error}") from last_error
 
 
 class CatalogDatabase:

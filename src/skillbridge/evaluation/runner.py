@@ -12,6 +12,7 @@ import tempfile
 import time
 from typing import Any, Dict, List, Optional
 
+from skillbridge import __version__
 from skillbridge.bridge import SkillBridge
 from skillbridge.config import SkillBridgeConfig
 from skillbridge.models import SecurityVerdict, utc_now_iso
@@ -579,7 +580,7 @@ def run_evaluation_suite(output_json_path: Optional[Path] = None) -> Dict[str, A
         report = {
             "generated_at": utc_now_iso(),
             "product": "SkillBridge",
-            "version": "2.0.0",
+            "version": __version__,
             "total_scenarios": len(EVALUATION_SCENARIOS),
             "matching_scenarios": matching_scenarios_count,
             "no_match_scenarios": no_match_scenarios_count,

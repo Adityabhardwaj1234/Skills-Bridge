@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any, List, Optional
 
+from skillbridge import __version__
 from skillbridge.bridge import SkillBridge
 from skillbridge.config import SkillBridgeConfig
 from skillbridge.evaluation.runner import run_evaluation_suite
@@ -26,6 +28,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--offline", action="store_true", help="Force offline mode (local catalog and cached index only)")
     parser.add_argument("--home", type=str, default=None, help="Override SkillBridge state directory (~/.skillbridge)")
     parser.add_argument("--project-root", type=str, default=None, help="Override target project root directory")
+    parser.add_argument("--version", action="version", version=f"skillbridge {__version__}")
 
     sub = parser.add_subparsers(dest="command", help="Available SkillBridge v2 operations")
 
@@ -181,7 +184,7 @@ def _print_output(data: Any, as_json: bool, human_text: Optional[str] = None) ->
         print(human_text)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def _main(argv: Optional[List[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
@@ -277,7 +280,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"  Assurance State  : {ver['assurance_state']} (Quality Score: {ver['quality_score']:.1f}/100)\n"
                 f"  Closure Digest   : {ver['closure_digest']}\n"
                 f"  Staged Directory : {imp['staged_dir']}\n"
-                f"  Persistence      : catalog + staged bundle persist under --home; the runtime session is process-local\n"
+                f"  Persistence      : catalog, quarantine, and audit persist under --home; staging is temporary and process-local\n"
                 f"  Transition Trail : {' -> '.join(imp['state_history'])}"
             )
             _print_output(imp, args.json, text)
@@ -372,7 +375,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"  Bundle Digest    : {imp['bundle_digest']}\n"
                 f"  Assurance State  : {ver['assurance_state']} (Quality Score: {ver['quality_score']:.1f}/100)\n"
                 f"  Staged Directory : {imp['staged_dir']}\n"
-                f"  Persistence      : catalog + staged bundle persist under --home; the runtime session is process-local\n"
+                f"  Persistence      : catalog, quarantine, and audit persist under --home; staging is temporary and process-local\n"
                 f"  Transition Trail : {' -> '.join(imp['state_history'])}"
             )
             _print_output(imp, args.json, text)
@@ -581,6 +584,23 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
     except Exception as exc:
         print(f"Error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    """CLI entry point that converts storage/startup failures into actionable messages."""
+    try:
+        return _main(argv)
+    except KeyboardInterrupt:
+        print("Interrupted.", file=sys.stderr)
+        return 130
+    except Exception as exc:
+        if os.environ.get("SKILLBRIDGE_DEBUG"):
+            raise
+        hint = ""
+        if "database" in str(exc).lower() or "sqlite" in type(exc).__name__.lower():
+            hint = " The corrupt database is moved to skillbridge.db.corrupt-<timestamp> on next open."
+        print(f"Error: {type(exc).__name__}: {exc}{hint}", file=sys.stderr)
         return 1
 
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import uuid
 
+from skillbridge import __version__
 from skillbridge.cache.database import CatalogDatabase
 from skillbridge.config import SkillBridgeConfig
 from skillbridge.discovery.engine import DiscoveryEngine
@@ -50,7 +51,7 @@ from skillbridge.verification.models import (
 
 
 class SkillBridge:
-    """Unified programmatic intelligence layer for skill, MCP-server, and agent extension orchestration (v2.0.0)."""
+    """Unified programmatic intelligence layer for skill, MCP-server, and agent extension orchestration (v2.0.1)."""
 
     def __init__(
         self,
@@ -366,12 +367,32 @@ class SkillBridge:
         )
 
     async def unload_skill(self, skill_id: str, *, session_id: str = "default") -> Dict[str, Any]:
-        if skill_id in self.loader._active_bundles:
-            return self.loader.unload_bundle(skill_id, reason="explicit_unload")
-        return self.loader.unload_skill(skill_id, session_id=session_id)
+        """Unload a skill from exactly one session; release staging only when no session holds it.
+
+        The previous implementation released the global bundle before checking ``session_id``,
+        allowing one MCP client to terminate another session's active skill.
+        """
+        result = self.loader.unload_skill(skill_id, session_id=session_id)
+        if not result.get("unloaded"):
+            return result
+        resolved = self.loader.resolve_active_bundle_id(skill_id)
+        if resolved and not self.loader.session_holds_skill(resolved):
+            bundle_result = self.loader.unload_bundle(resolved, reason="explicit_unload")
+            result["bundle_released"] = True
+            result["staging_removed"] = True
+            if isinstance(bundle_result, dict):
+                result.update({k: v for k, v in bundle_result.items() if k != "unloaded"})
+                result.setdefault("released_bundle", bundle_result)
+        return result
 
     async def unload_session(self, session_id: str = "default") -> Dict[str, Any]:
-        return self.loader.unload_session(session_id)
+        result = self.loader.unload_session(session_id)
+        # Session teardown must not leave imported bundles/staging alive when no other
+        # session (or handle) references them.
+        for extension_id in list(self.loader._active_bundles.keys()):
+            if not self.loader.session_holds_skill(extension_id):
+                self.loader.unload_bundle(extension_id, reason=f"session_unload:{session_id}")
+        return result
 
     async def search_mcp(
         self, query: str, *, limit: int = 20, session_id: str = "default"
@@ -503,7 +524,7 @@ class SkillBridge:
         mem = await self.get_memory_status()
         return {
             "status": "healthy",
-            "version": "2.0.0",
+            "version": __version__,
             "environment": ver["environment"],
             "database": ver["database"],
             "verification_engines": engines,
@@ -527,7 +548,7 @@ class SkillBridge:
                 "component": {
                     "type": "application",
                     "name": "skillbridge",
-                    "version": "2.0.0",
+                    "version": __version__,
                     "licenses": [{"license": {"id": "MIT"}}],
                 },
             },
@@ -644,7 +665,7 @@ class SkillBridge:
 
         return {
             "status": "ready",
-            "version": "2.0.0",
+            "version": __version__,
             "environment": env,
             "database": {"path": str(self.config.db_path), **seed_counts},
             "providers": [p.PROVIDER_ID for p in self.discovery.all_providers],

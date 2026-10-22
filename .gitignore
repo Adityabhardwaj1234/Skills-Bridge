@@ -25,7 +25,9 @@ env/
 *.db-journal
 *.db-wal
 *.db-shm
+*.db.corrupt-*
 *.log
+reports/
 
 # OS / editor noise
 .DS_Store

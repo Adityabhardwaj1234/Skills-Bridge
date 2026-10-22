@@ -21,11 +21,12 @@ _WINDOWS_RESERVED_NAMES = frozenset(
 
 
 def is_link_like(path: Path) -> bool:
-    """Return True for symlinks, junctions, and other Windows reparse points.
+    """Return True for symlinks, junctions, and other redirecting reparse points.
 
     ``Path.is_symlink()`` misses NTFS junctions, which can otherwise be walked into by
-    ``os.walk``/``Path.rglob`` and turn into an out-of-root data disclosure. This helper is
-    intentionally conservative: any reparse point is rejected as a link.
+    ``os.walk``/``Path.rglob`` and turn into an out-of-root data disclosure. OneDrive/cloud
+    placeholders are reparse points too but are ordinary local files, so their cloud tags are
+    allowed; symlinks, mount points, and exec links are always rejected.
     """
     try:
         if path.is_symlink():
@@ -34,9 +35,22 @@ def is_link_like(path: Path) -> bool:
         if callable(is_junction) and is_junction():
             return True
         st = path.lstat()
-        return bool(getattr(st, "st_file_attributes", 0) & _FILE_ATTRIBUTE_REPARSE_POINT)
+        attrs = int(getattr(st, "st_file_attributes", 0))
+        if not (attrs & _FILE_ATTRIBUTE_REPARSE_POINT):
+            return False
+        tag = int(getattr(st, "st_reparse_tag", 0) or 0)
+        if tag == 0:
+            return True
+        # IO_REPARSE_TAG_MOUNT_POINT (junction), IO_REPARSE_TAG_SYMLINK, APPEXECLINK.
+        if tag in (0xA0000003, 0xA000000C, 0x8000001B):
+            return True
+        # IO_REPARSE_TAG_CLOUD_* (0x9000xxxx) are content placeholders, not redirects.
+        if (tag & 0xFFFF0000) == 0x90000000:
+            return False
+        return True
     except OSError:
         return False
+
 
 # Agent Skills specification regex for valid skill names (1-64 chars, lowercase alphanumeric + single hyphens)
 SKILL_NAME_SPEC_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -213,6 +227,8 @@ def compute_directory_content_hash(directory: Path) -> str:
     """
     if not directory.exists():
         return ""
+    if is_link_like(directory):
+        return ""
     if directory.is_file():
         try:
             return f"sha256:{hashlib.sha256(directory.read_bytes()).hexdigest()[:16]}"
@@ -288,6 +304,9 @@ def normalize_url(url: str) -> str:
 
 def _blocked_ip_reason(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> Optional[str]:
     """Return a reason when an address is not a public unicast destination."""
+    if isinstance(ip, ipaddress.IPv6Address) and ip in ipaddress.IPv6Network("64:ff9b::/96"):
+        # Well-known NAT64 prefix embeds an IPv4 destination; judge the embedded address.
+        return _blocked_ip_reason(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF))
     mapped = getattr(ip, "ipv4_mapped", None)
     if mapped is not None:
         ip = mapped

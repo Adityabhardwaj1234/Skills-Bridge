@@ -152,6 +152,8 @@ class DiscoveryEngine:
         Returns (deduplicated_records, source_status_map).
         Even if a network provider fails, local catalog search always succeeds.
         """
+        if source_filter.lower() in ("local", "custom", "local_custom"):
+            source_filter = "local-custom"
         start = time.perf_counter()
         self.ensure_catalog_seeded()
         source_status: Dict[str, str] = {}

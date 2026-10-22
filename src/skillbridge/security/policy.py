@@ -172,15 +172,40 @@ class QuarantineManager:
 
     def __init__(self, quarantine_root: Path):
         self.quarantine_root = Path(quarantine_root)
+        if is_link_like(self.quarantine_root):
+            raise ValueError(
+                f"Quarantine root '{self.quarantine_root}' is a symlink/junction; refusing to use it."
+            )
         self.quarantine_root.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def _remove_quarantine_dir(path: Path) -> None:
+        """Remove a quarantine directory without following a planted link/reparse point."""
+        if is_link_like(path):
+            try:
+                path.unlink()
+                return
+            except OSError:
+                try:
+                    path.rmdir()
+                    return
+                except OSError:
+                    pass
+        try:
+            if path.is_file():
+                path.unlink()
+                return
+        except OSError:
+            pass
+        if path.exists():
+            shutil.rmtree(path)
 
     def quarantine_bundle(self, bundle: ExtensionBundle, assessment: SecurityAssessment) -> Path:
         """Stage a rejected or pending bundle in the isolated quarantine directory with its scan report."""
         safe_name = validate_skill_name(bundle.name or "quarantined-extension")
         short_hash = (assessment.content_hash or "nohash").replace("sha256:", "")[:12]
         q_dir = self.quarantine_root / f"{safe_name}-{short_hash}"
-        if q_dir.exists():
-            shutil.rmtree(q_dir)
+        self._remove_quarantine_dir(q_dir)
         q_dir.mkdir(parents=True, exist_ok=True)
 
         files_dir = q_dir / "bundle"
@@ -223,8 +248,7 @@ class QuarantineManager:
         except ValueError:
             safe_name = "quarantined-extension"
         q_dir = self.quarantine_root / f"{safe_name}-{digest}"
-        if q_dir.exists():
-            shutil.rmtree(q_dir)
+        self._remove_quarantine_dir(q_dir)
         bundle_dir = q_dir / "bundle"
         bundle_dir.mkdir(parents=True, exist_ok=True)
         staged = Path(str(getattr(manifest, "staged_path", "")))
@@ -265,7 +289,7 @@ class QuarantineManager:
         if not self.quarantine_root.exists():
             return items
         for entry in sorted(self.quarantine_root.iterdir()):
-            if not entry.is_dir():
+            if is_link_like(entry) or not entry.is_dir():
                 continue
             for report_name in ("security_assessment.json", "verification.json"):
                 report_file = entry / report_name

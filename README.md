@@ -138,10 +138,12 @@ skillbridge load-batch <skill-id-1> <skill-id-2> <skill-id-3> --workers 8 --appr
 
 Runtime handles live in the memory of the process running the command: `load-skill` and `load-batch` exit
 after printing their result, so a `status` or `unload-skill` in a **separate** shell command will not see
-those handles. Catalog records, staged bundles, verification results, and audit logs persist under
-`--home`. For persistent runtime sessions use the MCP broker (`skillbridge mcp-serve`) or the Python API
-(`SkillBridge.load_skill()`), where `status <skill-id>` reports the active handle and `unload-skill`
-releases it.
+those handles. Catalog records, verification results, audit logs, and blocked-bundle quarantine reports
+persist under `--home`; runtime staging is temporary under the system temp directory and is **not** part of
+`--home`. Temporary staging is removed on an in-process unload; abandoned CLI staging is garbage-collected
+on a later startup after 24 hours. For persistent runtime sessions use the MCP broker
+(`skillbridge mcp-serve`) or the Python API (`SkillBridge.load_skill()`), where `status <skill-id>` reports
+the active handle and `unload-skill` releases it.
 
 ### 5. Generate the product console
 
@@ -212,7 +214,7 @@ claude mcp add skillbridge -- skillbridge mcp-serve
 | `load_skills_batch` | Load many skills concurrently with isolated failures. |
 | `get_skill_status` | Inspect active/recalled bundle state. |
 | `invoke_skill` | Read active instructions and update LRU state. |
-| `run_skill_script` | Run a permitted, verified bundle script in an isolated worker. |
+| `run_skill_script` | Run a permitted, verified bundle script in an approval-gated subprocess with timeout and output caps (not a kernel sandbox). |
 | `unload_skill` | Release a skill or an entire session. |
 | `search_mcp_servers` | Search MCP registries. |
 | `preview_mcp_server` | Inspect transport, launch command, auth, dependencies. |
@@ -232,12 +234,18 @@ Compatibility aliases are also registered for the v1 names (`skillbridge_preflig
 SkillBridge applies policy **before** any skill body or script reaches the runtime.
 
 ```
-Tier 0  Provenance & staging   → path validation, symlink rejection, size/depth caps, quarantine
-Tier 1  Static analysis        → secret access, exfiltration, destructive commands, injection patterns
+Tier 0  Provenance & staging   → path validation, symlink/junction/hardlink rejection, size/depth caps
+Tier 1  Static analysis        → secrets, exfiltration, destructive commands, reverse shells, obfuscated exec
 Tier 2  Semantic review        → SKIL capability/intent review, declared-vs-observed mismatch
 Tier 3  Behavioral evaluation  → SkillEvaluator checks, redundancy and assurance scoring
         Policy gate            → trust × verdict matrix; DANGEROUS community never overridable
 ```
+
+Tier 0 rejects absolute/UNC/drive paths, `..`, NTFS alternate data streams, Windows device names
+(`CON`, `NUL`, `COM1`…), case-colliding entries, symlinks, junctions, and hardlinked files. AST findings
+now participate in the verdict instead of being informational only. The static scanner also has
+multi-line rules for socket→shell reverse shells, decoded `exec`, encoded PowerShell, keyboard hooks,
+`os.system`, and `shell=True`.
 
 Policy matrix (`allow` / `ask` / `block`):
 
@@ -245,8 +253,8 @@ Policy matrix (`allow` / `ask` / `block`):
 | --- | --- | --- | --- | --- |
 | builtin | allow | allow | block (explicit approval may allow) | ask |
 | trusted | allow | allow | block | ask |
-| community | allow | ask | block | ask |
-| untrusted | ask | ask | block | ask |
+| community | allow | ask | block | block |
+| untrusted | ask | block | block | block |
 
 Notes:
 
@@ -255,7 +263,21 @@ Notes:
 - Builtin DANGEROUS bundles can only load when **explicitly approved** and
   `allow_builtin_dangerous_override` is enabled (default on). Community/untrusted DANGEROUS bundles are
   never allowed.
-- Blocked bundles are quarantined under `~/.skillbridge/quarantine` with a JSON assessment.
+- Blocked imports are quarantined under `<home>/quarantine/<name>-<digest>/` with a `verification.json`
+  report and the blocked file snapshot. Accepted skills are not quarantined; their catalog metadata,
+  verification results, and audit history persist, while runtime staging lives under the system temp
+  directory. Use `scan` to store a static scan row for an arbitrary path or catalog record.
+- Import and rejection decisions are written to the `audit_log` (`import_skill` /
+  `import_skill_rejected`) with the bundle digest, verdict, and final state.
+
+### Script execution boundary
+
+Approved scripts run as **ordinary subprocesses under the current user account**. SkillBridge applies an
+approval gate, a restricted environment (host secrets removed, proxy poisoned), a timeout, a bounded
+output buffer, and process-tree termination on timeout. These controls reduce accidental leakage and
+runaway output; they are **not** an OS kernel sandbox. An approved script can still read user files and can
+bypass the in-process Python socket guard by spawning another executable. Only approve scripts whose source
+you have reviewed, or run SkillBridge inside an OS/container sandbox when executing untrusted code.
 
 ---
 
@@ -272,16 +294,29 @@ State lives in `~/.skillbridge` by default (override with `--home`):
 └── settings.json       # runtime settings overrides
 ```
 
+If the SQLite catalog is malformed, it is moved aside to `skillbridge.db.corrupt-<timestamp>` and a fresh
+catalog is created with an actionable log message. A `--home` path that exists as a regular file is rejected
+instead of producing a traceback.
+
 Global flags (`--offline`, `--json`, `--home <dir>`) must be placed **before** the subcommand:
 
 ```bash
 skillbridge --offline --home ./sandbox search-skills "pdf"
 skillbridge --json memory
+skillbridge --version
 ```
+
+`--source local` is accepted as an alias for the `local-custom` provider filter.
 
 Runtime bundles are staged under the system temp directory in a per-home subdirectory
 (`%TEMP%/skillbridge_runtime_<user>/<home>-<hash>` on Windows, `/tmp/...` on POSIX). They are removed when a
-skill or session is unloaded; the persistent tree above is never used for transient staging.
+skill or session is unloaded; abandoned staging directories older than 24 hours are removed on a later
+startup. The persistent tree above is never used for transient staging. Blocked imports are copied into
+`<home>/quarantine` for review before their transient staging is deleted.
+
+`import-dir` validates paths before staging. It follows the larger bundle-staging caps below, then the
+loader applies its own payload caps when a skill is loaded or imported into a session. The 100-reference
+cap is enforced on both paths; a bundle with 101 references is rejected before load.
 
 ### Loader limits (`LoaderLimits`)
 
@@ -318,8 +353,12 @@ skill or session is unloaded; the persistent tree above is never used for transi
 | `max_redirects` | 5 |
 | `max_retries` | 2 |
 
-Network requests are SSRF-guarded: explicit timeouts, redirect-hop validation, allowlisted domains, size
-caps, and no interaction with private/loopback addresses by default.
+Network requests are SSRF-guarded: explicit timeouts, redirect-hop validation, size caps, literal IP
+normalization (decimal/shorthand/IPv4-mapped forms), and DNS resolution checks that reject any loopback,
+private, link-local, metadata, or otherwise non-public resolved address. Environment proxies are ignored so
+they cannot bypass URL validation. Test transports injected for mocking bypass DNS resolution by design.
+SSRF validation cannot fully prevent DNS rebinding between validation and connection; run with OS-level
+egress controls when fetching hostile endpoints.
 
 ---
 

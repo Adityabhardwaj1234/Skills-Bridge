@@ -15,6 +15,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional
 
+from skillbridge import __version__
 from skillbridge.bridge import SkillBridge
 from skillbridge.config import SkillBridgeConfig
 
@@ -598,7 +599,7 @@ class SkillBridgeMCPServer:
                     },
                     "serverInfo": {
                         "name": "skillbridge",
-                        "version": "2.0.0",
+                        "version": __version__,
                     },
                 },
             }

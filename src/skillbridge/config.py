@@ -110,10 +110,17 @@ class SkillBridgeConfig:
         return Path(__file__).resolve().parent / "data" / "hermes_catalog"
 
     def ensure_dirs(self) -> None:
-        """Create required state directories safely."""
+        """Create required state directories safely, with actionable errors for bad paths."""
         for d in (self.home_dir, self.quarantine_dir, self.backups_dir, self.index_cache_dir):
+            if d.exists() and not d.is_dir():
+                raise ValueError(
+                    f"SkillBridge state path '{d}' exists but is not a directory. "
+                    "Choose a different --home or move the conflicting file."
+                )
             d.mkdir(parents=True, exist_ok=True)
         if self.enable_content_cache:
+            if self.content_cache_dir.exists() and not self.content_cache_dir.is_dir():
+                raise ValueError(f"Content cache path '{self.content_cache_dir}' is not a directory.")
             self.content_cache_dir.mkdir(parents=True, exist_ok=True)
 
     def get_local_skill_discovery_dirs(self) -> List[Dict[str, Any]]:

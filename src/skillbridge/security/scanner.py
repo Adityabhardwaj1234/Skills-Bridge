@@ -636,6 +636,119 @@ def scan_text_content(content: str, rel_path: str) -> List[SecurityFinding]:
                 )
                 break
 
+    # Multi-line / data-flow style checks. Line-oriented regexes miss common RCE chains whose
+    # dangerous ingredients are on separate lines (socket + connect + dup2 + shell, decoded exec).
+    full_text = "\n".join(lines)
+    script_or_doc = suffix in {".py", ".sh", ".bash", ".ps1", ".js", ".ts", ".md"} or is_md
+    if script_or_doc:
+        if (
+            re.search(r"\bsocket\.(?:socket|create_connection)\s*\(", full_text)
+            and (
+                re.search(r"\.connect\s*\(", full_text)
+                or re.search(r"\bsocket\.create_connection\s*\(", full_text)
+            )
+            and re.search(r"\b(?:dup2|subprocess|os\.system|pty\.spawn|Popen)\b", full_text)
+        ):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="python_reverse_shell_chain",
+                    severity="critical",
+                    category="exfiltration",
+                    file=rel_path,
+                    line=1,
+                    match="socket.socket + connect + shell/dup2",
+                    reason="Python code constructs a reverse shell (socket connection combined with dup2/subprocess)",
+                    remediation="Remove socket-to-shell bridging code; this is a remote code execution backdoor.",
+                )
+            )
+        if re.search(
+            r"\b(?:exec|eval)\s*\(\s*(?:base64|__import__|compile|open\s*\(|bytes\.fromhex|codecs\.decode|marshal\.loads|zlib\.decompress)",
+            full_text,
+        ):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="obfuscated_exec",
+                    severity="critical",
+                    category="obfuscation",
+                    file=rel_path,
+                    line=1,
+                    match="exec(decoded/compiled payload)",
+                    reason="Executes a decoded, compiled, or dynamically loaded payload (obfuscated code execution)",
+                    remediation="Remove dynamic payload execution; ship readable source only.",
+                )
+            )
+        if re.search(
+            r"(?i)\bpowershell(?:\.exe)?\b[^\n]{0,240}(?:-enc(?:odedcommand)?\b|frombase64string)",
+            full_text,
+        ):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="powershell_encoded_command",
+                    severity="critical",
+                    category="obfuscation",
+                    file=rel_path,
+                    line=1,
+                    match="powershell -EncodedCommand/FromBase64String",
+                    reason="Runs an encoded PowerShell payload, a common fileless execution technique",
+                    remediation="Remove encoded PowerShell; use inspectable commands.",
+                )
+            )
+        if re.search(
+            r"(?i)\b(?:pynput\.keyboard\.Listener|keyboard\.Listener|keyboard\.on_press|keyboard\.on_release|GetAsyncKeyState|SetWindowsHookEx)\b",
+            full_text,
+        ):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="keylogger_hook",
+                    severity="critical",
+                    category="exfiltration",
+                    file=rel_path,
+                    line=1,
+                    match="keyboard hook/input capture API",
+                    reason="Installs a keyboard hook or input-capture listener (keylogger behavior)",
+                    remediation="Remove keystroke capture code from skills.",
+                )
+            )
+        if re.search(r"\bos\.system\s*\(", full_text):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="os_system_shell",
+                    severity="high",
+                    category="destructive",
+                    file=rel_path,
+                    line=1,
+                    match="os.system()",
+                    reason="Executes an operating-system shell command via os.system()",
+                    remediation="Avoid shell execution; use an explicit allowlisted subprocess only when required.",
+                )
+            )
+        if re.search(r"(?is)\bsubprocess\.(?:Popen|run|call|check_output|check_call)\s*\([^)]*shell\s*=\s*True", full_text):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="subprocess_shell_true",
+                    severity="critical",
+                    category="destructive",
+                    file=rel_path,
+                    line=1,
+                    match="subprocess(..., shell=True)",
+                    reason="Invokes a shell with shell=True, enabling command injection",
+                    remediation="Pass an argument array with shell=False.",
+                )
+            )
+        if re.search(r"\b(?:eval|exec)\s*\(\s*(?![\"'0-9(\[])", full_text):
+            findings.append(
+                SecurityFinding(
+                    pattern_id="dynamic_eval_exec",
+                    severity="high",
+                    category="obfuscation",
+                    file=rel_path,
+                    line=1,
+                    match="eval()/exec() with dynamic input",
+                    reason="Evaluates or executes dynamic, non-literal input",
+                    remediation="Replace eval/exec with a safe parser or explicit dispatch.",
+                )
+            )
+
     return findings
 
 
@@ -714,6 +827,32 @@ def scan_mcp_transport(name: str, transport: MCPTransportSpec) -> List[SecurityF
                     )
                 )
     return findings
+
+
+def _ast_findings_to_security(ast_findings: List[Dict[str, Any]]) -> List[SecurityFinding]:
+    """Promote AST audit findings into policy-visible findings.
+
+    Previously AST results were displayed but excluded from ``determine_verdict``, so an
+    executable script using eval/exec/ctypes could still be rated SAFE.
+    """
+    converted: List[SecurityFinding] = []
+    for item in ast_findings:
+        try:
+            converted.append(
+                SecurityFinding(
+                    pattern_id=str(item.get("pattern_id", "ast_dynamic_behavior")),
+                    severity=str(item.get("severity", "medium")),
+                    category=str(item.get("category", "obfuscation")),
+                    file=str(item.get("file", "")),
+                    line=int(item.get("line", 1) or 1),
+                    match=str(item.get("reason", "AST dynamic behavior"))[:120],
+                    reason=str(item.get("reason", "Dynamic code behavior detected by AST audit")),
+                    remediation="Review the script and remove dynamic code loading/execution before approval.",
+                )
+            )
+        except (TypeError, ValueError):
+            continue
+    return converted
 
 
 def determine_verdict(findings: List[SecurityFinding]) -> str:
@@ -842,6 +981,7 @@ def scan_directory(
         )
 
     ast_findings = ast_audit_directory(directory)
+    findings.extend(_ast_findings_to_security(ast_findings))
     verdict = determine_verdict(findings)
     c_hash = compute_directory_content_hash(directory)
     return SecurityAssessment(
@@ -927,6 +1067,7 @@ def scan_bundle(bundle: ExtensionBundle) -> SecurityAssessment:
     if bundle.record and bundle.record.mcp_transport:
         findings.extend(scan_mcp_transport(bundle.name, bundle.record.mcp_transport))
 
+    findings.extend(_ast_findings_to_security(ast_findings))
     verdict = determine_verdict(findings) if (bundle.files or (bundle.record and bundle.record.mcp_transport)) else SecurityVerdict.UNKNOWN.value
     c_hash = bundle.content_hash or compute_bundle_content_hash(bundle.files)
     return SecurityAssessment(
