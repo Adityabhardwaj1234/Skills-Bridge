@@ -2,6 +2,22 @@
 
 All notable changes to **SkillBridge** are documented in this file.
 
+## [2.0.2] - 2026-10-24
+
+Catalog durability and recovery patch.
+
+### Fixed
+- **Catalog durability**: the persistent SQLite catalog no longer uses `journal_mode=OFF` and `synchronous=OFF`. It now uses WAL with `synchronous=NORMAL` (or `DELETE`/`FULL` when WAL is unavailable), so a crash or interrupted schema/FTS migration cannot leave a half-written database image.
+- **Startup integrity gate**: `CatalogDatabase` runs `PRAGMA quick_check` before schema writes and again after initialization. A damaged catalog raises `CatalogCorruptionError` with an actionable recovery command; it is no longer moved aside and replaced with an empty catalog that could later be silently reseeded. The damaged bytes remain untouched until an operator chooses recovery.
+- **Row-preserving `repair-catalog`**: new CLI command backs up the catalog to `recovery-<timestamp>/`, copies only surviving base-table rows into a fresh schema, rebuilds all indexes and FTS5, verifies row counts, per-table content digests, and full `PRAGMA integrity_check`, then atomically swaps in the repaired file. `--dry-run` inspects without creating a backup or replacement; `--force` rebuilds an already-healthy catalog. The command never imports bundled/provider data, and does not promote stale index-only entries into invented records.
+- **FTS/index damage handling**: corrupt FTS shadow tables and index entries are discarded and rebuilt from the authoritative table rows. A real damaged catalog containing 805 readable extension rows (with four corrupt indexes reporting 833 entries) was recovered with all 805 rows preserved; the original 9.6 MB file remains backed up byte-for-byte.
+- **Clearer read-only reporting**: `--dry-run` and healthy-catalog output now show authoritative readable row counts, report FTS as `not evaluated`, and label data preservation as `yes (no writes)` instead of misleading zeros. Non-empty WAL sidecars are checkpointed before backup when no process holds them; otherwise repair stops rather than dropping the newest transactions. Files that are not SQLite databases are rejected without mutation, and a rebuilt catalog must checkpoint cleanly before the atomic swap.
+- **Docs/version**: README, incident-recovery guide, CLI hint, and version updated to `2.0.2`. Documented that `verify`/`doctor` run discovery and can add local rows, so they are not read-only post-repair checks.
+
+### Tests
+- Added `tests/unit/test_catalog_recovery.py` (durable pragmas, forced rebuild, dry run/healthy reporting, stale-WAL checkpointing, non-SQLite rejection, no-seed row preservation, CLI command).
+- Updated the corrupt-storage regression to assert non-mutation and explicit recovery rather than silent replacement.
+
 ## [2.0.1] - 2026-10-22
 
 Security patch release based on an independent hostile red-team evaluation.

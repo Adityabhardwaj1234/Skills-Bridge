@@ -18,7 +18,7 @@ import zipfile
 
 from skillbridge.bridge import SkillBridge
 from skillbridge.bundles.manager import BundleIntegrityError, BundleStager
-from skillbridge.cache.database import CatalogDatabase
+from skillbridge.cache.database import CatalogCorruptionError, CatalogDatabase
 from skillbridge.config import SkillBridgeConfig
 from skillbridge.discovery.normalizer import is_safe_http_url
 from skillbridge.providers.hermes_hub import HermesHubProvider
@@ -350,18 +350,17 @@ class TestSsrfAndStorageRecovery(unittest.TestCase):
         finally:
             socket.getaddrinfo = original
 
-    def test_corrupt_database_is_retired_and_rebuilt(self) -> None:
+    def test_corrupt_database_is_preserved_and_requires_explicit_repair(self) -> None:
         home = Path(tempfile.mkdtemp(prefix="sb_hard_db_"))
         try:
             db_path = home / "skillbridge.db"
-            db_path.write_bytes(b"this is not a sqlite database\n" * 20)
-            db = CatalogDatabase(db_path)
-            try:
-                backups = list(home.glob("skillbridge.db.corrupt-*"))
-                self.assertTrue(backups, "corrupt catalog was not preserved")
-                self.assertGreaterEqual(db.count_extensions(), 0)
-            finally:
-                db.close()
+            original = b"this is not a sqlite database\n" * 20
+            db_path.write_bytes(original)
+            with self.assertRaises(CatalogCorruptionError):
+                CatalogDatabase(db_path)
+            self.assertEqual(db_path.read_bytes(), original, "corrupt catalog was modified")
+            self.assertFalse(list(home.glob("skillbridge.db.corrupt-*")))
+            self.assertFalse(list(home.glob("recovery-*")))
         finally:
             shutil.rmtree(home, ignore_errors=True)
 

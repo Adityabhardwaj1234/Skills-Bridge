@@ -12,6 +12,7 @@ from typing import Any, List, Optional
 
 from skillbridge import __version__
 from skillbridge.bridge import SkillBridge
+from skillbridge.cache.database import CatalogCorruptionError
 from skillbridge.config import SkillBridgeConfig
 from skillbridge.evaluation.runner import run_evaluation_suite
 from skillbridge.mcp_server.server import SkillBridgeMCPServer
@@ -163,6 +164,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ver = sub.add_parser("verify", help="Verify SkillBridge database, providers, cache stats, and detected native clients")
     p_ver.add_argument("--target", default=None, choices=["opencode", "claude-code"], help="Optional specific client target")
 
+    # repair-catalog
+    p_repair = sub.add_parser(
+        "repair-catalog",
+        help="Back up and rebuild a corrupt SQLite catalog from its surviving rows (never seeds provider data)",
+    )
+    p_repair.add_argument("--dry-run", action="store_true", help="Report detected corruption without writing a backup or replacement")
+    p_repair.add_argument("--force", action="store_true", help="Rebuild even if integrity_check passes; always creates a backup")
+
     # evaluate
     p_eval = sub.add_parser("evaluate", help="Run the end-to-end evaluation suite and output metrics")
     p_eval.add_argument("--output", default="reports/eval_report.json", help="Path to write JSON evaluation report")
@@ -199,6 +208,40 @@ def _main(argv: Optional[List[str]] = None) -> int:
         cfg.project_root = Path(args.project_root)
     if args.offline:
         cfg.network.offline_mode = True
+
+    if args.command == "repair-catalog":
+        from skillbridge.cache.recovery import CatalogRepairError, repair_catalog
+
+        try:
+            report = repair_catalog(cfg.db_path, dry_run=args.dry_run, force=args.force)
+        except CatalogRepairError as exc:
+            print(f"Catalog repair failed: {exc}", file=sys.stderr)
+            return 1
+        is_read_only = report.status in {"healthy", "would_repair"}
+        row_source = report.restored_rows if report.status == "repaired" else report.readable_rows
+        row_label = "Restored Rows" if report.status == "repaired" else "Readable Rows"
+        rows = "\n".join(
+            f"    {table}: {count if count >= 0 else 'unreadable'}"
+            for table, count in sorted(row_source.items())
+        ) or "    none"
+        fts_text = (
+            str(report.fts_rows) if report.fts_rows is not None else "not evaluated"
+        )
+        preserved_text = "yes (no writes)" if is_read_only else str(report.data_preserved)
+        human = (
+            "SkillBridge Catalog Repair Report:\n"
+            f"  Database      : {report.database}\n"
+            f"  Status        : {report.status}\n"
+            f"  Backup        : {report.backup_dir or 'not created'}\n"
+            f"  FTS Rows      : {fts_text}\n"
+            f"  Data Preserved: {preserved_text}\n"
+            f"  {row_label:<14}: \n{rows}\n"
+            f"  Message       : {report.message}"
+        )
+        if report.source_errors:
+            human += "\n  Source Errors : " + " | ".join(report.source_errors[:5])
+        _print_output(report.to_dict(), args.json, human)
+        return 0 if report.status in {"healthy", "repaired", "would_repair"} else 1
 
     if args.command == "mcp-serve":
         server = SkillBridgeMCPServer(config=cfg)
@@ -598,8 +641,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         if os.environ.get("SKILLBRIDGE_DEBUG"):
             raise
         hint = ""
-        if "database" in str(exc).lower() or "sqlite" in type(exc).__name__.lower():
-            hint = " The corrupt database is moved to skillbridge.db.corrupt-<timestamp> on next open."
+        if not isinstance(exc, CatalogCorruptionError) and (
+            "database" in str(exc).lower() or "sqlite" in type(exc).__name__.lower()
+        ):
+            hint = (
+                " If the catalog is corrupt, close other SkillBridge processes and run "
+                "'python -m skillbridge --home <home> repair-catalog'. It creates a timestamped "
+                "backup and rebuilds from surviving rows without seeding provider data."
+            )
         print(f"Error: {type(exc).__name__}: {exc}{hint}", file=sys.stderr)
         return 1
 

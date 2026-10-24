@@ -51,7 +51,7 @@ from skillbridge.verification.models import (
 
 
 class SkillBridge:
-    """Unified programmatic intelligence layer for skill, MCP-server, and agent extension orchestration (v2.0.1)."""
+    """Unified programmatic intelligence layer for skill, MCP-server, and agent extension orchestration (v2.0.2)."""
 
     def __init__(
         self,

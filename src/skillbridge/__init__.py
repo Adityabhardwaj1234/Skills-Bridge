@@ -8,7 +8,7 @@ import importlib.util
 from pathlib import Path
 import sys
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 _PKG_ROOT = Path(__file__).resolve().parent
 

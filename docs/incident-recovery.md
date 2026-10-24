@@ -9,8 +9,25 @@ When an extension fails Tier 0–3 security verification (`AssuranceState.UNSAFE
 3. Temporary `quarantine_staging/` or `active_staging/` directories for that attempt are deleted; accepted
    bundle staging is also removed on unload and abandoned staging older than 24 hours is garbage-collected.
 
-If the catalog database itself is malformed, the next start moves it to `skillbridge.db.corrupt-<timestamp>`
-and creates a fresh catalog. Preserve that file for forensics before deleting it.
+If the catalog database itself is malformed, SkillBridge stops with an actionable integrity error instead
+of silently replacing it. Close every SkillBridge/MCP process, then run
+`skillbridge --home <home> repair-catalog`. The command preserves the original bytes under
+`<home>/recovery-<timestamp>/`, rebuilds indexes and FTS5 from the rows that remain readable, verifies
+row counts/content digests and `PRAGMA integrity_check`, and atomically replaces the damaged file. It
+never seeds bundled or provider data; rows that are only present as stale index entries are not invented.
+Use `--dry-run` first to inspect the corruption without creating a backup or rebuilding the catalog.
+
+On a damaged catalog, ordinary `SELECT COUNT(*)` may use a corrupt covering index and report more rows
+than the base table actually contains. The repair uses `NOT INDEXED` full-table scans and digest checks.
+Do not use `verify` or `doctor` as frozen post-repair checks: both run normal discovery and may add local
+catalog rows. A non-empty `skillbridge.db-wal` is checkpointed before the backup; if a process still holds
+it, close that process instead of deleting the WAL. Read-only inspection may leave zero-length WAL or
+shared-memory sidecars; they contain no unmerged catalog rows.
+
+Global options (`--home`, `--offline`, `--json`) must appear before `repair-catalog`. The repair applies
+the current schema migration (typically v1 to v2); only the `schema_migrations` metadata row changes in
+addition to rebuilt indexes/FTS. The CLI prints a shortened backup digest; hash the full backup file with
+`Get-FileHash` or `sha256sum` when recording forensic evidence.
 
 ## 2. Rolling Back Native Client Deployments
 

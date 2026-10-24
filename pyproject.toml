@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skillbridge"
-version = "2.0.1"
+version = "2.0.2"
 description = "Dynamic Skill, MCP-Server, and Agent-Extension Orchestration & Intelligence Layer for Coding Agents (Hermes, OpenCode, Claude Code)"
 readme = "README.md"
 license = {text = "MIT"}

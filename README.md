@@ -67,7 +67,9 @@ skillbridge verify
 ```
 
 `doctor` checks the OS, Python, SQLite, verification engines, memory provider, and detected native clients.
-`verify` reports catalog counts, provider wiring, cache stats, and client readiness.
+`verify` reports catalog counts, provider wiring, cache stats, and client readiness. Both commands run
+normal local discovery, so they can add locally discovered skills or refresh local catalog rows; they are
+not read-only forensic checks. Use `repair-catalog --dry-run` when you need a read-only integrity report.
 
 ---
 
@@ -288,15 +290,51 @@ State lives in `~/.skillbridge` by default (override with `--home`):
 ```
 ~/.skillbridge/
 ├── skillbridge.db      # SQLite catalog, FTS5 index, audit, outcomes, install plans
+├── recovery-*/         # timestamped pre-repair backups (created by repair-catalog)
 ├── quarantine/         # blocked bundle snapshots
 ├── backups/            # atomic install backups
 ├── index-cache/        # fetched provider indexes
 └── settings.json       # runtime settings overrides
 ```
 
-If the SQLite catalog is malformed, it is moved aside to `skillbridge.db.corrupt-<timestamp>` and a fresh
-catalog is created with an actionable log message. A `--home` path that exists as a regular file is rejected
-instead of producing a traceback.
+If SQLite reports catalog corruption, SkillBridge **does not** silently replace the file or reseed the
+catalog. Startup stops with an actionable error. Close every process using the home, then run:
+
+```bash
+skillbridge --home ~/.skillbridge repair-catalog
+```
+
+The command first copies the catalog (including the current bytes) to
+`~/.skillbridge/recovery-<timestamp>/`, then rebuilds indexes and FTS5 from the rows that are still
+readable, verifies row counts/content digests and `PRAGMA integrity_check`, and atomically swaps in
+the repaired file. It never imports bundled or provider data. Use `--dry-run` to inspect corruption
+without creating a backup or rebuilding the catalog, or `--force` to rebuild a catalog that already
+passes integrity checks.
+The original backup is kept for forensics. A `--home` path that exists as a regular file is rejected
+instead of producing a traceback. The live catalog uses WAL journaling with `synchronous=NORMAL`
+(or `DELETE`/`FULL` where WAL is unavailable); `journal_mode=OFF` is never used.
+
+On Windows PowerShell, use an explicit path and put global options such as `--home` **before** the
+subcommand (`repair-catalog --help` lists only that subcommand's flags):
+
+```powershell
+$home = Join-Path $HOME '.skillbridge'
+python -m skillbridge --home $home repair-catalog --dry-run
+python -m skillbridge --home $home repair-catalog
+Get-FileHash (Join-Path $home 'recovery-<timestamp>\skillbridge.db') -Algorithm SHA256
+```
+
+The report prints a shortened SHA-256; use `Get-FileHash` (or `sha256sum`) for the full digest of
+the preserved backup. Repair applies the current schema migrations (the pre-repair catalog may be
+schema v1, the rebuilt catalog is v2) and changes the live file to WAL mode. A read-only inspection
+can leave a zero-byte `-wal` or a `-shm` sidecar; those contain no catalog rows. A non-empty WAL is
+data and is checkpointed before repair or the command stops without swapping anything.
+
+> Counts on a damaged catalog can be misleading: SQLite may answer `COUNT(*)` from a corrupt covering
+> index. `repair-catalog` reads the authoritative base table with `NOT INDEXED` and compares per-table
+> content digests, so index-only stale entries are not promoted into invented records. A non-empty
+> `skillbridge.db-wal` is checkpointed into the main file before backup; if another process holds the
+> WAL, the repair stops and tells you to close it rather than silently dropping the newest rows.
 
 Global flags (`--offline`, `--json`, `--home <dir>`) must be placed **before** the subcommand:
 
@@ -479,6 +517,7 @@ src/skillbridge/
 | `DANGEROUS extensions cannot be overridden…` | The bundle is blocked by policy. Inspect the quarantine report; community DANGEROUS is never allowed. |
 | First search is slow | The initial catalog seed walks bundled indexes and local skill directories. Subsequent runs reuse SQLite. |
 | `WinError 1314` in tests | Enable Windows Developer Mode or run tests in an environment with symlink privileges; the suite skips host symlink assertions otherwise. |
+| `Catalog database … failed SQLite integrity checks` | Close other SkillBridge/MCP processes, run `skillbridge --home <dir> repair-catalog --dry-run` to inspect, then run the same command without `--dry-run`. The command creates `recovery-<timestamp>/` and never seeds data. |
 | `psutil` not installed | Optional. SkillBridge falls back to `/proc`, `resource`, Win32 APIs, or a conservative estimate. |
 
 ---

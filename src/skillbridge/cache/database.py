@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import sqlite3
 import threading
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.request import pathname2url
@@ -24,33 +22,83 @@ from skillbridge.models import (
 )
 
 SCHEMA_VERSION = 2
-logger = logging.getLogger(__name__)
 
 
-def _retire_corrupt_database(db_path: Path) -> Path:
-    """Move an unreadable SQLite database (and WAL sidecars) aside, preserving evidence."""
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    backup = db_path.with_name(f"{db_path.name}.corrupt-{stamp}")
-    for candidate in (db_path, Path(str(db_path) + "-wal"), Path(str(db_path) + "-shm")):
-        if not candidate.exists():
-            continue
-        target = backup if candidate == db_path else backup.with_name(backup.name + candidate.suffix)
-        try:
-            candidate.replace(target)
-        except OSError as exc:
-            raise RuntimeError(
-                f"Catalog database at '{db_path}' is corrupt/unreadable and could not be moved aside: {exc}. "
-                "Close other SkillBridge processes, move the file manually, and retry."
-            ) from exc
-    logger.error("Corrupt catalog database moved to %s; a fresh catalog will be created.", backup)
-    return backup
+class CatalogCorruptionError(RuntimeError):
+    """Raised when SQLite reports structural damage in the persistent catalog."""
+
+    def __init__(self, db_path: Path, errors: list[str]):
+        self.db_path = Path(db_path)
+        self.errors = list(errors)
+        preview = " | ".join(self.errors[:3]) or "unknown integrity failure"
+        super().__init__(
+            f"Catalog database '{self.db_path}' failed SQLite integrity checks: {preview}. "
+            "No catalog data was deleted or reseeded. Close other SkillBridge processes, then run "
+            f"'python -m skillbridge --home \"{self.db_path.parent}\" repair-catalog' to create a "
+            "timestamped backup and rebuild the catalog from its surviving rows."
+        )
+
+
+def quick_check_errors(conn: sqlite3.Connection) -> List[str]:
+    """Return SQLite quick_check errors without raising on a malformed database image."""
+    errors: List[str] = []
+    try:
+        cursor = conn.execute("PRAGMA quick_check")
+        while True:
+            try:
+                row = cursor.fetchone()
+            except sqlite3.DatabaseError as exc:
+                errors.append(str(exc))
+                break
+            if row is None:
+                break
+            text = str(row[0])
+            if text and text.strip().lower() not in {"ok", "0"}:
+                errors.extend(line for line in text.splitlines() if line.strip())
+    except sqlite3.DatabaseError as exc:
+        errors.append(str(exc))
+    return errors
+
+
+def _looks_like_corruption(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in ("malformed", "not a database", "disk image", "encrypted", "corrupt")
+    )
+
+
+def _configure_durable_connection(conn: sqlite3.Connection) -> None:
+    """Use crash-safe SQLite settings; journal_mode=OFF must never be used for the catalog."""
+    mode = "delete"
+    try:
+        row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+        if row is not None:
+            mode = str(row[0]).lower()
+    except sqlite3.DatabaseError:
+        mode = "off"
+    if mode not in {"wal", "delete", "truncate", "persist"}:
+        row = conn.execute("PRAGMA journal_mode=DELETE").fetchone()
+        if row is not None:
+            mode = str(row[0]).lower()
+    if mode not in {"wal", "delete", "truncate", "persist"}:
+        raise sqlite3.OperationalError(
+            f"SQLite refused a crash-safe journal mode (got '{mode}'); "
+            "journal_mode=OFF is not permitted for the catalog"
+        )
+    # NORMAL in WAL mode cannot corrupt the database after a crash. The legacy DELETE
+    # fallback is upgraded to FULL so a partial page write is rolled back on next open.
+    conn.execute("PRAGMA synchronous=NORMAL" if mode == "wal" else "PRAGMA synchronous=FULL")
+    conn.execute("PRAGMA temp_store=MEMORY")
+    conn.execute("PRAGMA busy_timeout=15000")
 
 
 def _open_sqlite_resilient(db_path: Path) -> sqlite3.Connection:
-    """Open SQLite connection resiliently across local disks, Windows, and 9p/NFS sandbox filesystems.
+    """Open a catalog after a non-mutating integrity check.
 
-    A malformed database is retired to ``skillbridge.db.corrupt-<timestamp>`` and rebuilt instead
-    of surfacing a raw sqlite traceback to the user.
+    A damaged database is left exactly where it is. Silently moving it aside and creating an
+    empty catalog risks losing records and encouraging an unintended provider reseed. The
+    explicit ``repair-catalog`` command performs a backed-up, row-preserving rebuild instead.
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
     if db_path.exists() and db_path.is_dir():
@@ -66,25 +114,27 @@ def _open_sqlite_resilient(db_path: Path) -> sqlite3.Connection:
         except OSError:
             pass
 
-    last_error: Optional[sqlite3.DatabaseError] = None
-    for attempt in range(2):
-        conn = sqlite3.connect(str(db_path), timeout=15.0, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        try:
-            conn.execute("PRAGMA journal_mode=OFF")
-            conn.execute("PRAGMA synchronous=OFF")
-            conn.execute("PRAGMA temp_store=MEMORY")
-            # Force a page read so "file is not a database" is detected here, not later in the CLI.
-            conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
-            return conn
-        except sqlite3.DatabaseError as exc:
-            last_error = exc
-            conn.close()
-            if attempt == 0:
-                _retire_corrupt_database(db_path)
-                continue
-            break
-    raise RuntimeError(f"Could not open a valid catalog database at '{db_path}': {last_error}") from last_error
+    conn = sqlite3.connect(str(db_path), timeout=15.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA busy_timeout=15000")
+        conn.execute("PRAGMA temp_store=MEMORY")
+        # Force a page read so a non-SQLite file is detected before any schema write.
+        conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
+        errors = quick_check_errors(conn)
+        if errors:
+            raise CatalogCorruptionError(db_path, errors)
+        _configure_durable_connection(conn)
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+    except CatalogCorruptionError:
+        conn.close()
+        raise
+    except sqlite3.DatabaseError as exc:
+        conn.close()
+        if _looks_like_corruption(exc):
+            raise CatalogCorruptionError(db_path, [str(exc)]) from exc
+        raise RuntimeError(f"Could not open catalog database at '{db_path}': {exc}") from exc
 
 
 class CatalogDatabase:
@@ -98,8 +148,19 @@ class CatalogDatabase:
         self._has_outcomes: bool = False
         self._conn = _open_sqlite_resilient(self.db_path)
 
-        self._conn.execute("PRAGMA foreign_keys=ON")
-        self._init_schema()
+        try:
+            self._init_schema()
+            errors = quick_check_errors(self._conn)
+            if errors:
+                raise CatalogCorruptionError(self.db_path, errors)
+        except CatalogCorruptionError:
+            self._conn.close()
+            raise
+        except sqlite3.DatabaseError as exc:
+            self._conn.close()
+            if _looks_like_corruption(exc):
+                raise CatalogCorruptionError(self.db_path, [str(exc)]) from exc
+            raise
 
     def _connect(self) -> sqlite3.Connection:
         return self._conn
